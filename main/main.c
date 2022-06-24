@@ -1,9 +1,11 @@
 #include <sys/cdefs.h>
 #include <stdio.h>
+#include <math.h>
 #include "esp_log.h"
 #include "driver/i2c.h"
 #include "sdkconfig.h"
-#include "../components/vl53l5cx/include/vl53l5cx_api.h"
+#include "vl53l5cx_api.h"
+#include "ouchat_api.h"
 
 static const char *TAG = "v53l5cx_lib";
 
@@ -31,7 +33,7 @@ static esp_err_t i2c_master_init(void) {
     return i2c_driver_install(I2C_NUM_1, conf.mode, I2C_RX_BUF, I2C_TX_BUF, 0);
 }
 
-_Noreturn void app_main(void) {
+void app_main(void) {
 
     //Initialize the i2c bus
     ESP_ERROR_CHECK(i2c_master_init());
@@ -73,29 +75,41 @@ _Noreturn void app_main(void) {
         return;
     }
 
+    uint8_t resolution;
+    vl53l5cx_get_resolution(configuration,&resolution);
+    printf("resolution : %d \n", (uint8_t) sqrt(resolution));
     status = vl53l5cx_start_ranging(configuration);
 
-    VL53L5CX_ResultsData Results;
+    VL53L5CX_ResultsData results;
+    uint8_t output[64];
+    uint8_t *p_output = &output[0];
+    int16_t background[64];
+    uint8_t hasback = 0;
 
     while (true) {
+
         /* Use polling function to know when a new measurement is ready.
          * Another way can be to wait for HW interrupt raised on PIN A3
          * (GPIO 1) when a new measurement is ready */
 
+        memset(output,0,64);
         status = vl53l5cx_check_data_ready(configuration, &isReady);
-
         if (isReady) {
-            vl53l5cx_get_ranging_data(configuration, &Results);
-
-            /* As the sensor is set in 8x8 mode, we have a total
-             * of 64 zones to print. For this example, only the data of
-             * first zone are print */
-            printf("Print data no : %3u\n", configuration->streamcount);
-            for (i = 0; i < 64; i++) {
-                printf("Zone : %3d, Status : %3u, Distance : %4d mm\n",
-                       i,
-                       Results.target_status[VL53L5CX_NB_TARGET_PER_ZONE * i],
-                       Results.distance_mm[VL53L5CX_NB_TARGET_PER_ZONE * i]);
+            vl53l5cx_get_ranging_data(configuration, &results);
+            if(hasback == 0){
+                hasback = 1;
+                for (int j = 0; j < 64; ++j) {
+                    background[j] = results.distance_mm[VL53L5CX_NB_TARGET_PER_ZONE*j];
+                    printf("v = %4d\n",results.distance_mm[VL53L5CX_NB_TARGET_PER_ZONE*j]);
+                }
+            }else{
+                ouchat_process_data(results.distance_mm,background,p_output);
+                for (int j = 0; j < 64; ++j) {
+                    if (j % 8 == 0) {
+                        printf("\n");
+                    }
+                    printf("%d ",output[j]);
+                }
             }
             printf("\n");
         }
@@ -104,5 +118,39 @@ _Noreturn void app_main(void) {
          * file, not in API) */
         WaitMs(&(configuration->platform), 5);
     }
+
+    /*
+     * while (true) {
+
+        * Use polling function to know when a new measurement is ready.
+         * Another way can be to wait for HW interrupt raised on PIN A3
+         * (GPIO 1) when a new measurement is ready *
+
+    status = vl53l5cx_check_data_ready(configuration, &isReady);
+    printf("status %d\n", status);
+    if (isReady) {
+        vl53l5cx_get_ranging_data(configuration, &results);
+        printf("Ranfdsfdsffds");
+        if(hasback == 0){
+            hasback = 1;
+            for (int j = 0; j < 64; ++j) {
+                background[j] = results.distance_mm[j];
+                printf("v = %d\n",results.distance_mm[j]);
+            }
+        }else{
+            ouchat_process_data(&results,background,output);
+            for (int j = 0; j < 64; ++j) {
+                printf("%d,",output[j]);
+            }
+            printf("\n");
+        }
+
+    }
+
+     Wait a few ms to avoid too high polling (function in platform
+     * file, not in API)
+    WaitMs(&(configuration->platform), 5);
+}
+     */
 
 }
