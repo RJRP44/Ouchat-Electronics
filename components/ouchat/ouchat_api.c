@@ -25,6 +25,21 @@ static uint8_t process_cutting(
         if (p_input[i > 8 ? i - 8 : i]) {
             process_cutting(p_output, p_input, i > 8 ? i - 8 : i, sln);
         }
+
+        if (p_input[i % 8 < 7 && i < 55 ? i + 9 : i]) {
+            process_cutting(p_output, p_input, i % 8 < 7 && i < 55 ? i + 9 : i, sln);
+        }
+        if (p_input[i % 8 > 0 && i > 8 ? i - 9 : i]) {
+            process_cutting(p_output, p_input, i % 8 > 0 && i > 8 ? i - 9 : i, sln);
+        }
+        if (p_input[i % 8 < 7 && i > 8 ? i - 7 : i]) {
+            process_cutting(p_output, p_input, i % 8 < 7 && i > 8 ? i - 7 : i, sln);
+        }
+        if (p_input[i % 8 > 0 && i < 55 ? i + 7 : i]) {
+            process_cutting(p_output, p_input, i % 8 > 0 && i < 55 ? i + 7 : i, sln);
+        }
+
+
     }
     return 0;
 }
