@@ -108,7 +108,12 @@ void app_main(void) {
                     if (j % 8 == 0) {
                         printf("\n");
                     }
-                    printf("%d ",output[j]);
+                    if(output[j] == 0){
+                        printf("  ");
+                    }else{
+                        printf("%d ",output[j]);
+                    }
+
                 }
             }
             printf("\n");

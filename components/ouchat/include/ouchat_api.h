@@ -17,9 +17,9 @@
  */
 
 typedef struct {
-    uint8_t *p_tlc;
-    uint8_t *p_brc;
-    uint8_t *p_c;
+    uint8_t p_tlc;
+    uint8_t p_brc;
+    uint8_t p_c;
 } cat;
 
 /**
@@ -31,7 +31,7 @@ typedef struct {
  */
 
 uint8_t ouchat_process_data(
-        int16_t p_data[64],
+        const int16_t p_data[64],
         const int16_t p_background[64],
         uint8_t *p_output);
 
