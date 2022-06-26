@@ -3,6 +3,24 @@
 //
 
 #include "ouchat_api.h"
+#include <math.h>
+
+static double_t point_distance(
+        uint8_t a,
+        uint8_t b
+){
+    return (double_t) sqrt(pow(X_FROM_1D(a) - X_FROM_1D(b) , 2) + pow(Y_FROM_1D(a) - Y_FROM_1D(b) , 2));
+}
+
+static uint8_t cats_difference(
+        cat a_cat,
+        cat b_cat,
+        double_t *p_difference
+){
+    *p_difference += point_distance(a_cat.p_c, b_cat.p_c) * 2;
+    *p_difference += point_distance(a_cat.p_brc, b_cat.p_brc);
+    *p_difference += point_distance(a_cat.p_tlc, b_cat.p_tlc);
+}
 
 static uint8_t process_cutting(
         uint8_t *p_output,
@@ -70,10 +88,6 @@ uint8_t ouchat_process_data(
 
     for (int i = 0; i < 64; ++i) {
         if (idistance[i] > 0) {
-            /*
-            double we = (double) idistance[i] / total[0][*(p_output + i)];
-            total[1][*(p_output + i)] += we / (((i - i % 8) / 8.00) + 1);
-            total[2][*(p_output + i)] += we / ((i % 8) + 1);*/
             total[0][*(p_output + i)] ++;
             total[1][*(p_output + i)] += 1 + (i - i % 8) / 8;
             total[2][*(p_output + i)] += 1 + (i % 8);
