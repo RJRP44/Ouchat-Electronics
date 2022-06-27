@@ -100,7 +100,13 @@ uint8_t ouchat_process_data(
 
     for (int i = 1; i < 17; ++i) {
         scats[i].p_brc = 0;
-        scats[i].p_tlc = C_TO_1D(7, 7);
+        scats[i].p_tlc = C_TO_1D(16, 16);
+    }
+
+    if(sln == 1){
+        scats[0].p_c.y = 1;
+        memcpy(lcats, scats, sizeof(scats));
+        printf("empty \n");
     }
 
     for (int i = 0; i < 64; ++i) {
@@ -134,6 +140,45 @@ uint8_t ouchat_process_data(
         }
     }
 
+    cat_t temp[17];
+    memcpy(temp, scats, sizeof(temp));
+
+    if(lcats[0].p_c.y != 1){
+        for (int i = 1; i < 17; ++i) {
+            if (total[0][i] > 0) {
+                //Maximum difference is 39.598
+                double_t min_diff = 80;
+                uint8_t min_index = i;
+                for (int j = 1; j < 16; ++j) {
+                    if (((lcats[j].p_brc > 0 && lcats[j].p_tlc < C_TO_1D(7, 7)) || total[0][j] > 0) && lcats[i].p_tlc != C_TO_1D(16, 16)) {
+                        min_index = min_diff > cats_difference(lcats[j], scats[i]) ? j : min_index;
+                        min_diff = SMALLEST(min_diff, cats_difference(lcats[j], scats[i]));
+                        printf("%d,", j);
+                    }
+                }
+
+                if (temp[min_index].p_c.x != scats[i].p_c.x ||
+                    temp[min_index].p_c.y != scats[i].p_c.y ||
+                    temp[min_index].p_brc != scats[i].p_brc ||
+                    temp[min_index].p_tlc != scats[i].p_tlc) {
+
+                    memswap(min_index,i,temp);
+
+                    printf("Swapping : src=%d dest=%d\n", min_index , i);
+                }else{
+                    printf("Try Swapping : src=%d dest=%d\n", min_index , i);
+                }
+            }
+        }
+    }
+
+    for (int i = 1; i < 17; ++i) {
+        if (lcats[i].p_brc > 0 || total[0][i] > 0) {
+            printf("zone %d : c(%f,%f) tl(%d,%d) br(%d,%d) difference with : 1= %f, 2= %f, 3= %f\n",i,temp[i].p_c.x, temp[i].p_c.y,X_FROM_1D(temp[i].p_tlc), Y_FROM_1D(temp[i].p_tlc),X_FROM_1D(temp[i].p_brc), Y_FROM_1D(temp[i].p_brc),
+                   cats_difference(lcats[1], temp[i]),cats_difference(lcats[2], temp[i]),cats_difference(lcats[3], temp[i]));
+        }
+    }
+/*
     if (total[0][1] > 0) {
         printf("p_c(%f,%f) p_tlc(%d,%d) p_brc(%d,%d)\n", scats[1].p_c.x, scats[1].p_c.y,
                X_FROM_1D(scats[1].p_tlc), Y_FROM_1D(scats[1].p_tlc),
@@ -142,9 +187,9 @@ uint8_t ouchat_process_data(
         printf("1-1 : %f, 1-2 : %f, 2-1 : %f, 2-2 : %f,", cats_difference(lcats[1], scats[1]),
                cats_difference(lcats[1], scats[2]), cats_difference(lcats[2], scats[1]),
                cats_difference(lcats[2], scats[2]));
-    }
+    }*/
 
 
-    memcpy(&lcats, &scats, sizeof(scats));
+    memcpy(lcats, temp, sizeof(temp));
     return 0;
 }

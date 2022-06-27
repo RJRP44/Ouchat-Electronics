@@ -15,9 +15,14 @@
 #define C_TO_1D(x, y) 8*(x)+(y)
 
 /**
- * @brief Structure point contains a coordinate.
+ * @brief return the smallest value
  */
 
+#define SMALLEST(a,b) a < b ? a : b
+#define HIGHEST(a,b) a > b ? a : b
+/**
+ * @brief Structure point contains a coordinate.
+ */
 
 typedef struct {
     double_t x;
