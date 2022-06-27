@@ -7,6 +7,13 @@
 
 cat_t lcats[17];
 
+uint8_t memswap(uint8_t source, uint8_t destination, cat_t *p_array) {
+    cat_t temp_src = *(p_array + source);
+    *(p_array + source) = *(p_array + destination);
+    *(p_array + destination) = temp_src;
+    return 0;
+}
+
 static double_t point_distance(
         uint8_t a,
         uint8_t b
@@ -19,7 +26,7 @@ static double_t cats_difference(
         cat_t b_cat
 ) {
     double_t difference = 0;
-    difference += (double_t) sqrt(pow(a_cat.p_c.x - b_cat.p_c.x, 2) + pow(a_cat.p_c.y - b_cat.p_c.y, 2))* 2;
+    difference += (double_t) sqrt(pow(a_cat.p_c.x - b_cat.p_c.x, 2) + pow(a_cat.p_c.y - b_cat.p_c.y, 2)) * 2;
     difference += point_distance(a_cat.p_brc, b_cat.p_brc);
     difference += point_distance(a_cat.p_tlc, b_cat.p_tlc);
     return difference;
@@ -122,7 +129,7 @@ uint8_t ouchat_process_data(
 
     for (int i = 1; i < 17; ++i) {
         if (total[0][i] > 0) {
-            scats[i].p_c.x = (((double) total[1][i] / (double) total[0][i]) - 1) ;
+            scats[i].p_c.x = (((double) total[1][i] / (double) total[0][i]) - 1);
             scats[i].p_c.y = (((double) total[2][i] / (double) total[0][i]) - 1);
         }
     }

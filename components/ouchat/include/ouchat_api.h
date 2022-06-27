@@ -94,4 +94,19 @@ static double_t point_distance(
         uint8_t b
 );
 
+/**
+ * @brief This function is used to swap to elements in an array
+ * @param (uint8_t) source : index of the source
+ * @param (uint8_t) destination : index of the destination
+ * @param (*cat_t) *p_array : array to edit
+ * @return (uint8_t) status : 0 if swapping is OK.
+ */
+
+
+uint8_t memswap(
+        uint8_t source,
+        uint8_t destination,
+        cat_t *p_array
+);
+
 #endif //OUCHAT_PROCESSOR_H_
