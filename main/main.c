@@ -33,7 +33,7 @@ static esp_err_t i2c_master_init(void) {
     return i2c_driver_install(I2C_NUM_1, conf.mode, I2C_RX_BUF, I2C_TX_BUF, 0);
 }
 
-void app_main(void) {
+_Noreturn void app_main(void) {
 
     //Initialize the i2c bus
     ESP_ERROR_CHECK(i2c_master_init());
@@ -50,14 +50,14 @@ void app_main(void) {
     status = vl53l5cx_is_alive(configuration, &isAlive);
     if (!isAlive || status) {
         printf("VL53L5CX not detected at requested address\n");
-        return;
+        while (1);
     }
 
     /* (Mandatory) Init VL53L5CX sensor */
     status = vl53l5cx_init(configuration);
     if (status) {
         printf("VL53L5CX ULD Loading failed\n");
-        return;
+        while (1);
     }
 
     printf("VL53L5CX ULD ready ! (Version : %s)\n", VL53L5CX_API_REVISION);
@@ -65,14 +65,14 @@ void app_main(void) {
     status = vl53l5cx_set_resolution(configuration, VL53L5CX_RESOLUTION_8X8);
     if (status) {
         printf("vl53l5cx_set_resolution failed, status %u\n", status);
-        return;
+        while (1);
     }
 
     status = vl53l5cx_set_ranging_frequency_hz(configuration, 15);
     if(status)
     {
         printf("vl53l5cx_set_ranging_frequency_hz failed, status %u\n", status);
-        return;
+        while (1);
     }
 
     uint8_t resolution;
@@ -86,7 +86,7 @@ void app_main(void) {
     int16_t background[64];
     uint8_t hasback = 0;
 
-    while (true) {
+    while (1) {
 
         /* Use polling function to know when a new measurement is ready.
          * Another way can be to wait for HW interrupt raised on PIN A3

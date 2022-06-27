@@ -10,8 +10,20 @@
 #include <math.h>
 #include "vl53l5cx_api.h"
 
-#define X_FROM_1D(i) (i - i % 8) / 8.00
+#define X_FROM_1D(i) (i - (i % 8)) / 8
 #define Y_FROM_1D(i) i % 8
+#define C_TO_1D(x, y) 8*(x)+(y)
+
+/**
+ * @brief Structure point contains a coordinate.
+ */
+
+
+typedef struct {
+    double_t x;
+    double_t y;
+} point_t;
+
 
 /**
  * @brief Structure cat contains coordinate of a selection in the VL53L5CX output
@@ -23,8 +35,8 @@
 typedef struct {
     uint8_t p_tlc;
     uint8_t p_brc;
-    uint8_t p_c;
-} cat;
+    point_t p_c;
+} cat_t;
 
 /**
  * @brief This function is used to extract cat from the VL53L5CX output data
@@ -38,7 +50,7 @@ uint8_t ouchat_process_data(
         const int16_t p_data[64],
         const int16_t p_background[64],
         uint8_t *p_output
-        );
+);
 
 /**
  * @brief Inner function, not available outside this file. This function is used
@@ -54,21 +66,20 @@ static uint8_t process_cutting(
         int16_t p_input[64],
         uint8_t i,
         uint8_t sln
-        );
+);
 
 /**
  * @brief Inner function, not available outside this file. This function is used
  * to calculate the difference between 2 cats.
  * @param (cat) a_cat : 1st cat to compare.
  * @param (cat) b_cat : 2nd cat to compare.
- * @param (double_t) *p_difference : value of the difference.
+ * @return (double_t) value of the difference.
  */
 
-static uint8_t cats_difference(
-        cat a_cat,
-        cat b_cat,
-        double_t *p_difference
-        );
+static double_t cats_difference(
+        cat_t a_cat,
+        cat_t b_cat
+);
 
 /**
  * @brief Inner function, not available outside this file. This fuction is used
@@ -81,6 +92,6 @@ static uint8_t cats_difference(
 static double_t point_distance(
         uint8_t a,
         uint8_t b
-        );
+);
 
 #endif //OUCHAT_PROCESSOR_H_
