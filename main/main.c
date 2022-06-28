@@ -100,21 +100,9 @@ _Noreturn void app_main(void) {
                 hasback = 1;
                 for (int j = 0; j < 64; ++j) {
                     background[j] = results.distance_mm[VL53L5CX_NB_TARGET_PER_ZONE*j];
-                    printf("v = %4d\n",results.distance_mm[VL53L5CX_NB_TARGET_PER_ZONE*j]);
                 }
             }else{
                 ouchat_process_data(results.distance_mm,background,p_output);
-                for (int j = 0; j < 64; ++j) {
-                    if (j % 8 == 0) {
-                        printf("\n");
-                    }
-                    if(output[j] == 0){
-                        printf("  ");
-                    }else{
-                        printf("%d ",output[j]);
-                    }
-
-                }
             }
         }
 

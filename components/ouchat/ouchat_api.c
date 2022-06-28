@@ -144,10 +144,6 @@ uint8_t ouchat_process_data(
     cat_t temp[17];
     memcpy(temp, scats, sizeof(temp));
 
-#if OUCHAT_API_VERBOSE
-    printf("\n");
-#endif
-
     if (lcats[0].p_c.y != 1) {
         for (int i = 1; i < 17; ++i) {
             if (total[0][i] > 0 && lcats[i].p_tlc != C_TO_1D(16, 16)) {
@@ -207,17 +203,21 @@ uint8_t ouchat_process_data(
 #endif
         }
     }
-/*
-    if (total[0][1] > 0) {
-        printf("p_c(%f,%f) p_tlc(%d,%d) p_brc(%d,%d)\n", scats[1].p_c.x, scats[1].p_c.y,
-               X_FROM_1D(scats[1].p_tlc), Y_FROM_1D(scats[1].p_tlc),
-               X_FROM_1D(scats[1].p_brc), Y_FROM_1D(scats[1].p_brc));
+#if OUCHAT_API_VERBOSE
+    if(sln != 1){
+        for (int j = 0; j < 64; ++j) {
+            if (j % 8 == 0) {
+                printf("\n");
+            }
+            if(p_output[j] == 0){
+                printf("  ");
+            }else{
+                printf("%d ",p_output[j]);
+            }
 
-        printf("1-1 : %f, 1-2 : %f, 2-1 : %f, 2-2 : %f,", cats_difference(lcats[1], scats[1]),
-               cats_difference(lcats[1], scats[2]), cats_difference(lcats[2], scats[1]),
-               cats_difference(lcats[2], scats[2]));
-    }*/
-
+        }
+    }
+#endif
 
     memcpy(lcats, temp, sizeof(temp));
     lsln = sln;
