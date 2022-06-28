@@ -5,7 +5,7 @@
 #include "driver/i2c.h"
 #include "sdkconfig.h"
 #include "vl53l5cx_api.h"
-#include "ouchat_api.h"
+#include "ouchat_processing.h"
 
 static const char *TAG = "v53l5cx_lib";
 
@@ -102,7 +102,7 @@ _Noreturn void app_main(void) {
                     background[j] = results.distance_mm[VL53L5CX_NB_TARGET_PER_ZONE*j];
                 }
             }else{
-                ouchat_process_data(results.distance_mm,background,p_output);
+                ouchat_prepare_data(results.distance_mm,background,p_output);
             }
         }
 
