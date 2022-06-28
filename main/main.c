@@ -116,7 +116,6 @@ _Noreturn void app_main(void) {
 
                 }
             }
-            printf("\n");
         }
 
         /* Wait a few ms to avoid too high polling (function in platform

@@ -6,7 +6,7 @@
 #include <math.h>
 
 cat_t lcats[17];
-
+uint8_t lsln = 1;
 uint8_t memswap(uint8_t source, uint8_t destination, cat_t *p_array) {
     cat_t temp_src = *(p_array + source);
     *(p_array + source) = *(p_array + destination);
@@ -103,12 +103,9 @@ uint8_t ouchat_process_data(
         scats[i].p_tlc = C_TO_1D(16, 16);
     }
 
-    if (sln == 1) {
+    if (sln == 1 && lsln == 1) {
         scats[0].p_c.y = 1;
         memcpy(lcats, scats, sizeof(scats));
-#if OUCHAT_API_VERBOSE
-        printf("empty \n");
-#endif
     }
 
     for (int i = 0; i < 64; ++i) {
@@ -145,14 +142,18 @@ uint8_t ouchat_process_data(
     cat_t temp[17];
     memcpy(temp, scats, sizeof(temp));
 
+#if OUCHAT_API_VERBOSE
+    printf("\n");
+#endif
+
     if (lcats[0].p_c.y != 1) {
         for (int i = 1; i < 17; ++i) {
-            if (total[0][i] > 0) {
+            if (total[0][i] > 0 && lcats[i].p_tlc != C_TO_1D(16, 16)) {
                 //Maximum difference is 39.598
                 double_t min_diff = 80;
                 uint8_t min_index = i;
                 for (int j = 1; j < 16; ++j) {
-                    if (((lcats[j].p_brc > 0 && lcats[j].p_tlc < C_TO_1D(7, 7)) || total[0][j] > 0) && lcats[i].p_tlc != C_TO_1D(16, 16)) {
+                    if (lcats[j].p_tlc != C_TO_1D(16, 16)) {
                         min_index = min_diff > cats_difference(lcats[j], scats[i]) ? j : min_index;
                         min_diff = SMALLEST(min_diff, cats_difference(lcats[j], scats[i]));
 #if OUCHAT_API_VERBOSE
@@ -189,6 +190,15 @@ uint8_t ouchat_process_data(
         }
     }
 #endif
+
+    for (int i = 1; i < 17; ++i) {
+        if(lcats[i].p_tlc == C_TO_1D(16, 16) && temp[i].p_tlc != C_TO_1D(16,16)){
+            printf("Start of %d\n", i);
+        }
+        if(lcats[i].p_tlc != C_TO_1D(16, 16) && temp[i].p_tlc == C_TO_1D(16,16)){
+            printf("End of %d\n", i);
+        }
+    }
 /*
     if (total[0][1] > 0) {
         printf("p_c(%f,%f) p_tlc(%d,%d) p_brc(%d,%d)\n", scats[1].p_c.x, scats[1].p_c.y,
@@ -202,5 +212,6 @@ uint8_t ouchat_process_data(
 
 
     memcpy(lcats, temp, sizeof(temp));
+    lsln = sln;
     return 0;
 }

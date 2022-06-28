@@ -14,7 +14,7 @@
 #define Y_FROM_1D(i) i % 8
 #define C_TO_1D(x, y) 8*(x)+(y)
 
-#define OUCHAT_API_VERBOSE 0
+#define OUCHAT_API_VERBOSE 1
 
 /**
  * @brief return the smallest value
