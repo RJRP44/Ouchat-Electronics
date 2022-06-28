@@ -7,6 +7,8 @@
 
 cat_t lcats[17];
 uint8_t lsln = 1;
+cat_t start_cats[17];
+
 uint8_t memswap(uint8_t source, uint8_t destination, cat_t *p_array) {
     cat_t temp_src = *(p_array + source);
     *(p_array + source) = *(p_array + destination);
@@ -193,10 +195,16 @@ uint8_t ouchat_process_data(
 
     for (int i = 1; i < 17; ++i) {
         if(lcats[i].p_tlc == C_TO_1D(16, 16) && temp[i].p_tlc != C_TO_1D(16,16)){
+            start_cats[i] = temp[i];
+#if OUCHAT_API_VERBOSE
             printf("Start of %d\n", i);
+#endif
         }
         if(lcats[i].p_tlc != C_TO_1D(16, 16) && temp[i].p_tlc == C_TO_1D(16,16)){
+#if OUCHAT_API_VERBOSE
             printf("End of %d\n", i);
+            printf("Selection %d moved x:%f y:%f\n", i , start_cats[i].p_c.x - lcats[i].p_c.x, start_cats[i].p_c.y - lcats[i].p_c.y);
+#endif
         }
     }
 /*
