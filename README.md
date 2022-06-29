@@ -25,12 +25,20 @@ A project using [vl53l5cx](https://www.st.com/en/imaging-and-photonics-solutions
 
 ```
 ├── CMakeLists.txt
-├── 📁 components /                
+├── 📁 components /        
+│   ├── 📁 ouchat /
+│   │   ├── ouchat_processing.c
+│   │   ├── ouchat_utils.c
+│   │   └── 📁 include / 
+│   │       ├── ouchat_processing.h
+│   │       └── ouchat_utils.h     
 │   └── 📁 Vl53l5cx /
-│      └── 📁 include /
-│          ├── platform.h
-│          ├── vl53v5cx_api.h
-│          └── vl53v5cx_buffer.h
+│       ├── platform.c
+│       ├── vl53v5cx_api.c
+│       └── 📁 include /
+│           ├── platform.h
+│           ├── vl53v5cx_api.h
+│           └── vl53v5cx_buffer.h
 ├── 📁 main /
 │   ├── CMakeLists.txt
 │   ├── main.c
