@@ -11,7 +11,7 @@ uint8_t memory_swap(uint8_t source, uint8_t destination, area_t *p_array) {
     return 0;
 }
 
-static double_t point_distance(
+double_t point_distance(
         uint8_t a,
         uint8_t b
 ) {
@@ -20,7 +20,7 @@ static double_t point_distance(
                            pow(ORDINATE_FROM_1D(a) - ORDINATE_FROM_1D(b), 2));
 }
 
-static double_t area_difference(
+double_t area_difference(
         area_t a_cat,
         area_t b_cat
 ) {

@@ -1,6 +1,7 @@
 #include <sys/cdefs.h>
 #include <stdio.h>
 #include <math.h>
+#include <esp_timer.h>
 #include "esp_log.h"
 #include "driver/i2c.h"
 #include "sdkconfig.h"
@@ -81,8 +82,8 @@ _Noreturn void app_main(void) {
     status = vl53l5cx_start_ranging(configuration);
 
     VL53L5CX_ResultsData results;
-    uint8_t output[64];
-    uint8_t *p_output = &output[0];
+    area_t output[16];
+    area_t *p_output = &output[0];
     int16_t background[64];
     uint8_t hasback = 0;
 

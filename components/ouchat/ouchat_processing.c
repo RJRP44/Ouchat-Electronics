@@ -22,6 +22,7 @@ uint8_t ouchat_negative_data(
             *(p_output_data + i) = data_background[i] - input_data[i] - trigger_value;
         }
     }
+    return 0;
 }
 
 static uint8_t process_cutting(
@@ -77,14 +78,15 @@ uint8_t ouchat_prepare_data(
 
     //Set all elements of the array to 0
     memset(sum_data, 0, sizeof sum_data);
+    memset(area_address, 16, sizeof area_address);
 
     //Get all the values above the floor
-    ouchat_negative_data(0xC8, input_data, data_background, &negative_data[0]);
+    ouchat_negative_data(200, input_data, data_background, &negative_data[0]);
 
     //Temporarily addressing all areas
-    uint8_t address = 0x01;
+    uint8_t address = 0;
     for (int i = 0; i < 64; ++i) {
-        if (negative_data[i] > 0 && area_address[i] == 0) {
+        if (negative_data[i] > 0 && area_address[i] == 16) {
             process_cutting(&area_address[0], negative_data, i, address);
             address++;
         }
@@ -96,19 +98,20 @@ uint8_t ouchat_prepare_data(
         areas[i].top_left = POINT_TO_1D(16, 16);
     }
 
-    last_address = address;
-
     //Checks if 0 zones have been detected
-    if (address == 1 && last_address == 1) {
+    if (address == 0 && last_address == 0) {
         memcpy(last_areas, areas, sizeof(areas));
+        last_address = address;
         return 1;
     }
+
+    last_address = address;
 
     //Calculates point of areas
     for (int i = 0; i < 64; ++i) {
         if (negative_data[i] > 0) {
 
-            address = area_address[i] - 1;
+            address = area_address[i];
 
             sum_data[TOTAL_SUM][address]++;
             sum_data[ABSCISSA_SUM][address] += 1 + ABSCISSA_FROM_1D(i);
@@ -122,12 +125,12 @@ uint8_t ouchat_prepare_data(
                 areas[address].top_left = POINT_TO_1D(ABSCISSA_FROM_1D(areas[address].top_left), ORDINATE_FROM_1D(i));
             }
 
-            if (ABSCISSA_FROM_1D(i) < ABSCISSA_FROM_1D(areas[address].bottom_right)) {
+            if (ABSCISSA_FROM_1D(i) > ABSCISSA_FROM_1D(areas[address].bottom_right)) {
                 areas[address].bottom_right =
                         POINT_TO_1D(ABSCISSA_FROM_1D(i), ORDINATE_FROM_1D(areas[address].bottom_right));
             }
 
-            if (ORDINATE_FROM_1D(i) < ORDINATE_FROM_1D(areas[address].bottom_right)) {
+            if (ORDINATE_FROM_1D(i) > ORDINATE_FROM_1D(areas[address].bottom_right)) {
                 areas[address].bottom_right =
                         POINT_TO_1D(ABSCISSA_FROM_1D(areas[address].bottom_right), ORDINATE_FROM_1D(i));
             }
@@ -167,7 +170,7 @@ uint8_t ouchat_prepare_data(
                 }
             }
 
-            if (area_difference(temp_areas[min_index], areas[i]) == 0) {
+            if (area_difference(temp_areas[min_index], areas[i]) != 0) {
 
                 memory_swap(min_index, i, temp_areas);
 
@@ -180,20 +183,19 @@ uint8_t ouchat_prepare_data(
         }
     }
 
-    memcpy(last_areas, temp_areas, sizeof(temp_areas));
-
 #if OUCHAT_API_VERBOSE
     //Only for debugging
     for (int i = 0; i < 16; ++i) {
         if (last_areas[i].bottom_right > 0 || sum_data[TOTAL_SUM][i] > 0) {
 
-            printf("zone %d : c(%f,%f) tl(%d,%d) br(%d,%d) difference with : 1= %f, 2= %f, 3= %f\n", i,
+            printf("zone %d : c(%f,%f) tl(%d,%d) br(%d,%d) sum=%d difference with : 1= %f, 2= %f, 3= %f\n", i,
                    temp_areas[i].center.x,
                    temp_areas[i].center.y,
                    ABSCISSA_FROM_1D(temp_areas[i].top_left),
                    ORDINATE_FROM_1D(temp_areas[i].top_left),
                    ABSCISSA_FROM_1D(temp_areas[i].bottom_right),
                    ORDINATE_FROM_1D(temp_areas[i].bottom_right),
+                   sum_data[TOTAL_SUM][i],
                    area_difference(last_areas[1], temp_areas[i]),
                    area_difference(last_areas[2], temp_areas[i]),
                    area_difference(last_areas[3], temp_areas[i]));
@@ -225,10 +227,12 @@ uint8_t ouchat_prepare_data(
         if (negative_data[j] == 0) {
             printf("  ");
         } else {
-            printf("%d ", p_output[j]);
+            printf("%d ", area_address[j]);
         }
 
     }
 #endif
+    memcpy(last_areas, temp_areas, sizeof(temp_areas));
+    memcpy(p_output, temp_areas, sizeof(temp_areas));
     return 0;
 }

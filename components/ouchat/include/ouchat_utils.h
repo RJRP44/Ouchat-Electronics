@@ -57,7 +57,7 @@ uint8_t memory_swap(
  * @return (double_t) the distance between the 2 points.
  */
 
-static double_t point_distance(
+double_t point_distance(
         uint8_t a,
         uint8_t b
 );
@@ -70,7 +70,7 @@ static double_t point_distance(
  * @return (double_t) value of the difference.
  */
 
-static double_t area_difference(
+double_t area_difference(
         area_t a_cat,
         area_t b_cat
 );
