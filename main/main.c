@@ -7,7 +7,7 @@
 #include "sdkconfig.h"
 #include "vl53l5cx_api.h"
 #include "ouchat_processing.h"
-
+#include "ouchat_api.h"
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -198,12 +198,21 @@ _Noreturn void app_main(void) {
     } else {
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
     }
+    //https_request_task(NULL);
+    TaskHandle_t xHandle = NULL;
 
+    xTaskCreate(https_request_task, "https_get_task", 8192, NULL, 5, &xHandle);
+    configASSERT( xHandle );
+
+    while (1){
+        vTaskDelay(10);
+    }
+/*
     while (1) {
 
-        /* Use polling function to know when a new measurement is ready.
+         Use polling function to know when a new measurement is ready.
          * Another way can be to wait for HW interrupt raised on PIN A3
-         * (GPIO 1) when a new measurement is ready */
+         * (GPIO 1) when a new measurement is ready
 
         memset(output,0,64);
         status = vl53l5cx_check_data_ready(configuration, &isReady);
@@ -219,12 +228,12 @@ _Noreturn void app_main(void) {
             }
         }
 
-        /* Wait a few ms to avoid too high polling (function in platform
-         * file, not in API) */
+         Wait a few ms to avoid too high polling (function in platform
+         * file, not in API)
         WaitMs(&(configuration->platform), 5);
     }
 
-    /*
+
      * while (true) {
 
         * Use polling function to know when a new measurement is ready.
@@ -257,5 +266,4 @@ _Noreturn void app_main(void) {
     WaitMs(&(configuration->platform), 5);
 }
      */
-
 }

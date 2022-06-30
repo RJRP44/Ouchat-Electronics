@@ -1,0 +1,15 @@
+menu "Ouchat Configuration"
+
+    config OUCHAT_KEY
+        string "Ouchat Secret Key"
+        default "mykey"
+        help
+            The secret key of your ouchat.
+
+    config OUCHAT_CAT
+        string "Ouchat Cat ID"
+        default "mycat"
+        help
+            The ID of your cat.
+
+endmenu
