@@ -109,7 +109,11 @@ static void https_get_request_using_crt_bundle(void)
 void https_request_task(void *pvparameters)
 {
     strcpy(OUCHAT_API_REQUEST,"GET " WEB_URL);
-    strcat(OUCHAT_API_REQUEST, *(uint8_t *)pvparameters == 1 ? "1" : "0");
+    if((*(uint8_t*)pvparameters + 1) == 1){
+        strcat(OUCHAT_API_REQUEST, "0");
+    }else{
+        strcat(OUCHAT_API_REQUEST, "1");
+    }
     strcat(OUCHAT_API_REQUEST," HTTP/1.1\r\n"
                                "Host: " WEB_SERVER "\r\n"
                                "User-Agent: esp-idf/1.0 esp32\r\n"
