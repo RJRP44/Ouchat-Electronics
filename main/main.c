@@ -200,8 +200,9 @@ _Noreturn void app_main(void) {
     }
     //https_request_task(NULL);
     TaskHandle_t xHandle = NULL;
+    uint8_t args = 1;
 
-    xTaskCreate(https_request_task, "https_get_task", 8192, NULL, 5, &xHandle);
+    xTaskCreate(https_request_task, "https_get_task", 8192, &args, 5, &xHandle);
     configASSERT( xHandle );
 
     while (1){

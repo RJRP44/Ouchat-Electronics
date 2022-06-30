@@ -19,14 +19,11 @@
 #include "esp_crt_bundle.h"
 
 #define WEB_SERVER "v2.api.ouchat.fr"
-#define WEB_URL "https://v2.api.ouchat.fr/api/cat/set?key=" CONFIG_OUCHAT_KEY "&cat=" CONFIG_OUCHAT_CAT "&value=1"
+#define WEB_URL "https://v2.api.ouchat.fr/api/cat/set?key=" CONFIG_OUCHAT_KEY "&cat=" CONFIG_OUCHAT_CAT "&value="
 
 static const char *TAG = "ouchat-api";
 
-static const char OUCHAT_API_REQUEST[] = "GET " WEB_URL " HTTP/1.1\r\n"
-                                        "Host: "WEB_SERVER"\r\n"
-                                        "User-Agent: esp-idf/1.0 esp32\r\n"
-                                        "\r\n";
+static char OUCHAT_API_REQUEST[146];
 
 /* Root cert for v2.api.ouchat.fr, taken from ouchat_api_cert.pem
    The PEM file was extracted from the output of this command:
@@ -46,7 +43,7 @@ static void https_get_request(esp_tls_cfg_t cfg, const char *WEB_SERVER_URL, con
     esp_tls_t *tls = esp_tls_init();
     if (!tls) {
         ESP_LOGE(TAG, "Failed to allocate esp_tls handle!");
-        goto exit;
+        return;
     }
 
     if (esp_tls_conn_http_new_sync(WEB_SERVER_URL, &cfg, tls) == 1) {
@@ -97,11 +94,6 @@ static void https_get_request(esp_tls_cfg_t cfg, const char *WEB_SERVER_URL, con
 
     cleanup:
     esp_tls_conn_destroy(tls);
-    exit:
-    for (int countdown = 10; countdown >= 0; countdown--) {
-        ESP_LOGI(TAG, "%d...", countdown);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }
 }
 
 static void https_get_request_using_crt_bundle(void)
@@ -116,6 +108,13 @@ static void https_get_request_using_crt_bundle(void)
 
 void https_request_task(void *pvparameters)
 {
+    strcpy(OUCHAT_API_REQUEST,"GET " WEB_URL);
+    strcat(OUCHAT_API_REQUEST, *(uint8_t *)pvparameters == 1 ? "1" : "0");
+    strcat(OUCHAT_API_REQUEST," HTTP/1.1\r\n"
+                               "Host: " WEB_SERVER "\r\n"
+                               "User-Agent: esp-idf/1.0 esp32\r\n"
+                               "\r\n");
+    ESP_LOGI(TAG, "%s", OUCHAT_API_REQUEST );
     ESP_LOGI(TAG, "Start https_request example");
 
     https_get_request_using_crt_bundle();
