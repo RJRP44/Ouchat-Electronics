@@ -54,6 +54,8 @@ static esp_err_t i2c_master_init(void) {
 static int s_retry_num = 0;
 static EventGroupHandle_t s_wifi_event_group;
 
+void ouchat_prepare_data(int16_t pInt[64], int16_t pInt1[64], void (*pFunction)(uint8_t, uint8_t));
+
 static void event_handler(void* arg, esp_event_base_t event_base,
                           int32_t event_id, void* event_data)
 {
@@ -76,6 +78,23 @@ static void event_handler(void* arg, esp_event_base_t event_base,
     }
 }
 
+ static void ouchat_event_handler(double_t x, double_t y){
+    if(y > 6.00){
+        printf("Outside\n");
+        TaskHandle_t xHandle = NULL;
+        uint8_t args = 0;
+
+        xTaskCreate(https_request_task, "https_get_task", 8192, (void*)&args, 5, &xHandle);
+        configASSERT( xHandle );
+    }else if(y < -6.00){
+        printf("Inside\n");
+        TaskHandle_t xHandle = NULL;
+        uint8_t args_inside = 1;
+
+        xTaskCreate(https_request_task, "https_get_task", 8192, (void*)&args_inside, 5, &xHandle);
+        configASSERT( xHandle );
+    }
+}
 
 _Noreturn void app_main(void) {
 
@@ -199,21 +218,9 @@ _Noreturn void app_main(void) {
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
     }
     //https_request_task(NULL);
-    TaskHandle_t xHandle = NULL;
-    uint8_t args = 1;
 
-    xTaskCreate(https_request_task, "https_get_task", 8192, &args, 5, &xHandle);
-    configASSERT( xHandle );
 
-    while (1){
-        vTaskDelay(10);
-    }
-/*
     while (1) {
-
-         Use polling function to know when a new measurement is ready.
-         * Another way can be to wait for HW interrupt raised on PIN A3
-         * (GPIO 1) when a new measurement is ready
 
         memset(output,0,64);
         status = vl53l5cx_check_data_ready(configuration, &isReady);
@@ -225,46 +232,12 @@ _Noreturn void app_main(void) {
                     background[j] = results.distance_mm[VL53L5CX_NB_TARGET_PER_ZONE*j];
                 }
             }else{
-                ouchat_prepare_data(results.distance_mm,background,p_output);
+                ouchat_handle_data(results.distance_mm,background,&ouchat_event_handler);
             }
         }
 
-         Wait a few ms to avoid too high polling (function in platform
-         * file, not in API)
         WaitMs(&(configuration->platform), 5);
     }
 
 
-     * while (true) {
-
-        * Use polling function to know when a new measurement is ready.
-         * Another way can be to wait for HW interrupt raised on PIN A3
-         * (GPIO 1) when a new measurement is ready *
-
-    status = vl53l5cx_check_data_ready(configuration, &isReady);
-    printf("status %d\n", status);
-    if (isReady) {
-        vl53l5cx_get_ranging_data(configuration, &results);
-        printf("Ranfdsfdsffds");
-        if(hasback == 0){
-            hasback = 1;
-            for (int j = 0; j < 64; ++j) {
-                background[j] = results.distance_mm[j];
-                printf("v = %d\n",results.distance_mm[j]);
-            }
-        }else{
-            ouchat_process_data(&results,background,output);
-            for (int j = 0; j < 64; ++j) {
-                printf("%d,",output[j]);
-            }
-            printf("\n");
-        }
-
-    }
-
-     Wait a few ms to avoid too high polling (function in platform
-     * file, not in API)
-    WaitMs(&(configuration->platform), 5);
-}
-     */
 }
