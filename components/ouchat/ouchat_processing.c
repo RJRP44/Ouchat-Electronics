@@ -65,10 +65,11 @@ static uint8_t process_cutting(
     return 0;
 }
 
-uint8_t ouchat_prepare_data(
+uint8_t ouchat_handle_data(
         const int16_t input_data[64],
         const int16_t data_background[64],
-        area_t *p_output) {
+        void (*p_callback)(double_t, double_t)
+        ) {
 
     uint16_t negative_data[64];
     uint8_t area_address[64];
@@ -216,6 +217,7 @@ uint8_t ouchat_prepare_data(
             printf("Selection %d moved x:%f y:%f\n", i,
                    start_cats[i].center.x - last_areas[i].center.x,
                    start_cats[i].center.y - last_areas[i].center.y);
+            (*p_callback)(start_cats[i].center.x - last_areas[i].center.x,start_cats[i].center.y - last_areas[i].center.y);
 
         }
     }
@@ -233,6 +235,5 @@ uint8_t ouchat_prepare_data(
     }
 #endif
     memcpy(last_areas, temp_areas, sizeof(temp_areas));
-    memcpy(p_output, temp_areas, sizeof(temp_areas));
     return 0;
 }

@@ -47,14 +47,14 @@ uint8_t ouchat_negative_data(
  * @brief This function is used to extract area from the VL53L5CX output data
  * @param (int16_t) *p_data : VL53L5CX results data.
  * @param (uint16_t) p_background : background of the reads
- * @param (area_t) *p_output : output data
+ * @param (void) *p_callback(double_t, double_t) : callback on cat move
  * @return (uint8_t) status : 0 if processing is OK.
  */
 
-uint8_t ouchat_prepare_data(
+uint8_t ouchat_handle_data(
         const int16_t input_data[64],
         const int16_t data_background[64],
-        area_t *p_output
+        void (*p_callback)(double_t, double_t)
 );
 
 /**
