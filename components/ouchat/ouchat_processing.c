@@ -151,7 +151,7 @@ uint8_t ouchat_handle_data(
 
     //Track areas and fix address
     for (int i = 0; i < 16; ++i) {
-        if (sum_data[TOTAL_SUM][i] > 0 && last_areas[i].top_left != POINT_TO_1D(16, 16)) {
+        if (sum_data[TOTAL_SUM][i] > 0 /*&& last_areas[i].top_left != POINT_TO_1D(16, 16)*/) {
 
             //Maximum theoretical difference is 39.598
             double_t min_difference = 40 * 2;
@@ -168,6 +168,15 @@ uint8_t ouchat_handle_data(
                     printf("%d,", j);
 #endif
 
+                }
+
+                if(sum_data[TOTAL_SUM][i] > 0 && area_difference(last_areas[j], areas[i]) < 1){
+                    min_index = min_difference > area_difference(last_areas[j], areas[i]) ? j : min_index;
+                    min_difference = SMALLEST(min_difference, area_difference(last_areas[j], areas[i]));
+
+#if OUCHAT_API_VERBOSE
+                    printf("_%d,", j);
+#endif
                 }
             }
 
