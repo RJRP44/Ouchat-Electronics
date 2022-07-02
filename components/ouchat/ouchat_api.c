@@ -109,10 +109,12 @@ static void https_get_request_using_crt_bundle(void)
 void https_request_task(void *pvparameters)
 {
     strcpy(OUCHAT_API_REQUEST,"GET " WEB_URL);
-    if((*(uint8_t*)pvparameters + 1) == 1){
-        strcat(OUCHAT_API_REQUEST, "0");
-    }else{
+    printf("https : %d",*(uint8_t *)pvparameters);
+
+    if((*(uint8_t *)pvparameters) == 5){
         strcat(OUCHAT_API_REQUEST, "1");
+    }else{
+        strcat(OUCHAT_API_REQUEST, "0");
     }
     strcat(OUCHAT_API_REQUEST," HTTP/1.1\r\n"
                                "Host: " WEB_SERVER "\r\n"
