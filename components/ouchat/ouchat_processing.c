@@ -7,6 +7,7 @@
 #include "ouchat_utils.h"
 
 area_t last_areas[16];
+uint16_t last_sum_data[3][16];
 uint8_t last_address = 0x01;
 area_t start_cats[17];
 
@@ -69,7 +70,7 @@ uint8_t ouchat_handle_data(
         const int16_t input_data[64],
         const int16_t data_background[64],
         void (*p_callback)(double_t, double_t)
-        ) {
+) {
 
     uint16_t negative_data[64];
     uint8_t area_address[64];
@@ -84,12 +85,31 @@ uint8_t ouchat_handle_data(
     //Get all the values above the floor
     ouchat_negative_data(200, input_data, data_background, &negative_data[0]);
 
+    uint8_t remaining_address[16];
+    uint8_t address_index = 0;
+
+    //First go through all last address
+    for (int i = 0; i < 16; ++i) {
+        if (last_sum_data[TOTAL_SUM][i] > 0) {
+            u_int8_t center_index = POINT_TO_1D(round(last_areas[i].center.x), round(last_areas[i].center.y));
+            if (area_address[center_index] == 16) {
+#if OUCHAT_API_VERBOSE
+                printf("Address : %d recovering on %d (%f;%f)\n", i, center_index, round(last_areas[i].center.x),
+                       round(last_areas[i].center.y));
+#endif
+                process_cutting(&area_address[0], negative_data, center_index, i);
+            }
+        }else{
+            remaining_address[++address_index-1] = i;
+        }
+    }
+
     //Temporarily addressing all areas
-    uint8_t address = 0;
     for (int i = 0; i < 64; ++i) {
         if (negative_data[i] > 0 && area_address[i] == 16) {
-            process_cutting(&area_address[0], negative_data, i, address);
-            address++;
+            process_cutting(&area_address[0], negative_data, i, remaining_address[0]);
+            memmove(remaining_address, remaining_address + 1, 15 * sizeof(uint8_t));
+            remaining_address[--address_index + 1] = 0;
         }
     }
 
@@ -100,19 +120,19 @@ uint8_t ouchat_handle_data(
     }
 
     //Checks if 0 zones have been detected
-    if (address == 0 && last_address == 0) {
+    if (remaining_address[15] == 15 && last_address == 15) {
         memcpy(last_areas, areas, sizeof(areas));
-        last_address = address;
+        last_address = 15;
         return 1;
     }
 
-    last_address = address;
+    last_address = remaining_address[15];
 
     //Calculates point of areas
     for (int i = 0; i < 64; ++i) {
         if (negative_data[i] > 0) {
 
-            address = area_address[i];
+            uint8_t address = area_address[i];
 
             sum_data[TOTAL_SUM][address]++;
             sum_data[ABSCISSA_SUM][address] += 1 + ABSCISSA_FROM_1D(i);
@@ -149,50 +169,6 @@ uint8_t ouchat_handle_data(
     area_t temp_areas[16];
     memcpy(temp_areas, areas, sizeof(temp_areas));
 
-    //Track areas and fix address
-    for (int i = 0; i < 16; ++i) {
-        if (sum_data[TOTAL_SUM][i] > 0 /*&& last_areas[i].top_left != POINT_TO_1D(16, 16)*/) {
-
-            //Maximum theoretical difference is 39.598
-            double_t min_difference = 40 * 2;
-            uint8_t min_index = i;
-
-            //Search for the smallest difference : Smallest difference equals higher chance to be the same area
-            for (int j = 0; j < 16; ++j) {
-                if (last_areas[j].top_left != POINT_TO_1D(16, 16)) {
-
-                    min_index = min_difference > area_difference(last_areas[j], areas[i]) ? j : min_index;
-                    min_difference = SMALLEST(min_difference, area_difference(last_areas[j], areas[i]));
-
-#if OUCHAT_API_VERBOSE
-                    printf("%d,", j);
-#endif
-
-                }
-
-                if(sum_data[TOTAL_SUM][i] > 0 && area_difference(last_areas[j], areas[i]) < 1){
-                    min_index = min_difference > area_difference(last_areas[j], areas[i]) ? j : min_index;
-                    min_difference = SMALLEST(min_difference, area_difference(last_areas[j], areas[i]));
-
-#if OUCHAT_API_VERBOSE
-                    printf("_%d,", j);
-#endif
-                }
-            }
-
-            if (area_difference(temp_areas[min_index], areas[i]) != 0) {
-
-                memory_swap(min_index, i, temp_areas);
-
-#if OUCHAT_API_VERBOSE
-                printf("Swapping : src=%d dest=%d\n", min_index, i);
-            } else {
-                printf("Try Swapping : src=%d dest=%d\n", min_index, i);
-#endif
-            }
-        }
-    }
-
 #if OUCHAT_API_VERBOSE
     //Only for debugging
     for (int i = 0; i < 16; ++i) {
@@ -226,7 +202,8 @@ uint8_t ouchat_handle_data(
             printf("Selection %d moved x:%f y:%f\n", i,
                    start_cats[i].center.x - last_areas[i].center.x,
                    start_cats[i].center.y - last_areas[i].center.y);
-            (*p_callback)(start_cats[i].center.x - last_areas[i].center.x,start_cats[i].center.y - last_areas[i].center.y);
+            (*p_callback)(start_cats[i].center.x - last_areas[i].center.x,
+                          start_cats[i].center.y - last_areas[i].center.y);
 
         }
     }
@@ -242,7 +219,10 @@ uint8_t ouchat_handle_data(
         }
 
     }
+    printf("\n");
+
 #endif
+    memcpy(last_sum_data, sum_data, sizeof(sum_data));
     memcpy(last_areas, temp_areas, sizeof(temp_areas));
     return 0;
 }
