@@ -33,6 +33,7 @@ typedef struct {
     uint8_t top_left;
     uint8_t bottom_right;
     point_t center;
+    uint8_t sum;
 } area_t;
 
 /**
@@ -74,5 +75,16 @@ double_t area_difference(
         area_t a_cat,
         area_t b_cat
 );
+
+/**
+ * @brief This function is used to calculate the difference
+ * between 2 areas address for qsort.
+ * @param (const void*) p1 : 1st address to compare
+ * @param (const void*) p2 : 2nd address to compare
+ * @return (int) <0 : if p1 is bigger than p2,
+ *                0 : if p1 equals p2,
+ *               >0 : if p1 is smaller than p2.
+ */
+int area_address_compar (const void* p1, const void* p2);
 
 #endif //OUCHAT_ELECTRONICS_OUCHAT_UTILS_H

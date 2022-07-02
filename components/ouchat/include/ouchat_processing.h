@@ -25,8 +25,10 @@
  * @brief return the smallest value
  */
 
-#define SMALLEST(a, b) a < b ? a : b
-#define HIGHEST(a, b) a > b ? a : b
+#define SMALLEST(a, b) a < (b) ? (a) : b
+#define HIGHEST(a, b) a > (b) ? (a) : b
+
+extern area_t ouchat_last_areas[16];
 
 /**
  * @brief This function is used to extract object from reads

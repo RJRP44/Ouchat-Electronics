@@ -3,10 +3,11 @@
 //
 
 #include <math.h>
+#include <stdlib.h>
 #include "ouchat_processing.h"
 #include "ouchat_utils.h"
 
-area_t last_areas[16];
+area_t ouchat_last_areas[16];
 uint16_t last_sum_data[3][16];
 uint8_t last_address = 0x01;
 area_t start_cats[17];
@@ -81,35 +82,107 @@ uint8_t ouchat_handle_data(
     //Set all elements of the array to 0
     memset(sum_data, 0, sizeof sum_data);
     memset(area_address, 16, sizeof area_address);
+    for (int i = 0; i < 16; ++i) {
+        areas[i].sum = 0;
+    }
 
     //Get all the values above the floor
     ouchat_negative_data(200, input_data, data_background, &negative_data[0]);
 
     uint8_t remaining_address[16];
-    uint8_t address_index = 0;
+
+    //Init all address
+    for (int i = 0; i < 16; ++i) {
+        remaining_address[i] = i;
+    }
+
+    qsort(remaining_address,16,sizeof(uint8_t),area_address_compar);
 
     //First go through all last address
     for (int i = 0; i < 16; ++i) {
-        if (last_sum_data[TOTAL_SUM][i] > 0) {
-            u_int8_t center_index = POINT_TO_1D(round(last_areas[i].center.x), round(last_areas[i].center.y));
-            if (area_address[center_index] == 16) {
+        uint8_t address = remaining_address[i];
+
+        if (last_sum_data[TOTAL_SUM][address] > 0) {
+            u_int8_t center_index =
+                    POINT_TO_1D(round(ouchat_last_areas[address].center.x), round(ouchat_last_areas[address].center.y));
+
+            if (area_address[center_index] == 16 && negative_data[center_index] > 0) {
+
 #if OUCHAT_API_VERBOSE
-                printf("Address : %d recovering on %d (%f;%f)\n", i, center_index, round(last_areas[i].center.x),
-                       round(last_areas[i].center.y));
+                printf("Address : %d recovering on %d (%f;%f)\n", address, center_index,
+                       round(ouchat_last_areas[address].center.x), round(ouchat_last_areas[address].center.y));
 #endif
-                process_cutting(&area_address[0], negative_data, center_index, i);
+
+                process_cutting(&area_address[0], negative_data, center_index, address);
+
+
+                memmove(remaining_address, remaining_address + 1, 15 * sizeof(uint8_t));
+                remaining_address[15] = 0;
+                --i;
             }
-        }else{
-            remaining_address[++address_index-1] = i;
+            /*else if (negative_data[Y_FROM_1D(center_index) < 7 ? center_index + 1 : center_index] && area_address[Y_FROM_1D(center_index) < 7 ? center_index + 1 : center_index] == 16) {
+
+                process_cutting(&area_address[0], negative_data, Y_FROM_1D(center_index) < 7 ? center_index + 1 : center_index, address);
+                printf("Address : %d recovering on %d (%f;%f)\n",
+                       address,
+                       Y_FROM_1D(center_index) < 7 ? center_index + 1 : center_index,
+                       round(ouchat_last_areas[address].center.x),
+                       round(ouchat_last_areas[address].center.y + 1));
+
+                memmove(remaining_address, remaining_address + 1, 15 * sizeof(uint8_t));
+                remaining_address[15] = 0;
+                --i;
+
+            }else if (negative_data[Y_FROM_1D(center_index) > 0 ? center_index - 1 : center_index]&& area_address[Y_FROM_1D(center_index) < 7 ? center_index + 1 : center_index] == 16) {
+
+                process_cutting(&area_address[0], negative_data, Y_FROM_1D(center_index) > 0 ? center_index - 1 : center_index, address);
+                printf("Address : %d recovering on %d (%f;%f)\n",
+                       address,
+                       Y_FROM_1D(center_index) > 0 ? center_index - 1 : center_index,
+                       round(ouchat_last_areas[address].center.x),
+                       round(ouchat_last_areas[address].center.y - 1));
+
+                memmove(remaining_address, remaining_address + 1, 15 * sizeof(uint8_t));
+                remaining_address[15] = 0;
+                --i;
+
+            }else if (negative_data[center_index < 55 ? center_index + 8 : center_index]&& area_address[Y_FROM_1D(center_index) < 7 ? center_index + 1 : center_index] == 16) {
+
+                process_cutting(&area_address[0], negative_data, center_index < 55 ? center_index + 8 : center_index, address);
+                printf("Address : %d recovering on %d (%f;%f)\n",
+                       address,
+                       center_index < 55 ? center_index + 8 : center_index,
+                       round(ouchat_last_areas[address].center.x + 1),
+                       round(ouchat_last_areas[address].center.y));
+
+                memmove(remaining_address, remaining_address + 1, 15 * sizeof(uint8_t));
+                remaining_address[15] = 0;
+                --i;
+
+            }else if (negative_data[center_index > 8 ? center_index - 8 : center_index]&& area_address[Y_FROM_1D(center_index) < 7 ? center_index + 1 : center_index] == 16) {
+
+                process_cutting(&area_address[0], negative_data, center_index > 8 ? center_index - 8 : center_index, address);
+                printf("Address : %d recovering on %d (%f;%f)\n",
+                       address,
+                       center_index > 8 ? center_index - 8 : center_index,
+                       round(ouchat_last_areas[address].center.x - 1),
+                       round(ouchat_last_areas[address].center.y));
+
+                memmove(remaining_address, remaining_address + 1, 15 * sizeof(uint8_t));
+                remaining_address[15] = 0;
+                --i;
+
+            }*/
         }
     }
 
     //Temporarily addressing all areas
     for (int i = 0; i < 64; ++i) {
         if (negative_data[i] > 0 && area_address[i] == 16) {
+            printf("changing on %d, on %d (%d;%d) a : %d",remaining_address[0],i, ABSCISSA_FROM_1D(i), ORDINATE_FROM_1D(i),area_address[i]);
             process_cutting(&area_address[0], negative_data, i, remaining_address[0]);
             memmove(remaining_address, remaining_address + 1, 15 * sizeof(uint8_t));
-            remaining_address[--address_index + 1] = 0;
+            remaining_address[15] = 0;
         }
     }
 
@@ -120,11 +193,18 @@ uint8_t ouchat_handle_data(
     }
 
     //Checks if 0 zones have been detected
-    if (remaining_address[15] == 15 && last_address == 15) {
-        memcpy(last_areas, areas, sizeof(areas));
-        last_address = 15;
+    if (remaining_address[15] != 0 && last_address != 0) {
+        memcpy(ouchat_last_areas, areas, sizeof(areas));
+        last_address = remaining_address[15];
         return 1;
     }
+
+#if OUCHAT_API_VERBOSE
+    for (int i = 0; i < 16; ++i) {
+        printf("%d,",remaining_address[i]);
+    }
+    printf("\n");
+#endif
 
     last_address = remaining_address[15];
 
@@ -164,6 +244,7 @@ uint8_t ouchat_handle_data(
             areas[i].center.x = (double_t) sum_data[ABSCISSA_SUM][i] / sum_data[TOTAL_SUM][i] - 1;
             areas[i].center.y = (double_t) sum_data[ORDINATE_SUM][i] / sum_data[TOTAL_SUM][i] - 1;
         }
+        areas[i].sum = sum_data[TOTAL_SUM][i];
     }
 
     area_t temp_areas[16];
@@ -172,7 +253,7 @@ uint8_t ouchat_handle_data(
 #if OUCHAT_API_VERBOSE
     //Only for debugging
     for (int i = 0; i < 16; ++i) {
-        if (last_areas[i].bottom_right > 0 || sum_data[TOTAL_SUM][i] > 0) {
+        if (ouchat_last_areas[i].bottom_right > 0 || sum_data[TOTAL_SUM][i] > 0) {
 
             printf("zone %d : c(%f,%f) tl(%d,%d) br(%d,%d) sum=%d difference with : 1= %f, 2= %f, 3= %f\n", i,
                    temp_areas[i].center.x,
@@ -182,28 +263,28 @@ uint8_t ouchat_handle_data(
                    ABSCISSA_FROM_1D(temp_areas[i].bottom_right),
                    ORDINATE_FROM_1D(temp_areas[i].bottom_right),
                    sum_data[TOTAL_SUM][i],
-                   area_difference(last_areas[1], temp_areas[i]),
-                   area_difference(last_areas[2], temp_areas[i]),
-                   area_difference(last_areas[3], temp_areas[i]));
+                   area_difference(ouchat_last_areas[1], temp_areas[i]),
+                   area_difference(ouchat_last_areas[2], temp_areas[i]),
+                   area_difference(ouchat_last_areas[3], temp_areas[i]));
         }
     }
 
 
     for (int i = 0; i < 16; ++i) {
-        if (last_areas[i].top_left == C_TO_1D(16, 16) && temp_areas[i].top_left != C_TO_1D(16, 16)) {
+        if (ouchat_last_areas[i].top_left == C_TO_1D(16, 16) && temp_areas[i].top_left != C_TO_1D(16, 16)) {
             start_cats[i] = temp_areas[i];
 
             printf("Start of %d\n", i);
 
         }
-        if (last_areas[i].top_left != C_TO_1D(16, 16) && temp_areas[i].top_left == C_TO_1D(16, 16)) {
+        if (ouchat_last_areas[i].top_left != C_TO_1D(16, 16) && temp_areas[i].top_left == C_TO_1D(16, 16)) {
 
             printf("End of %d\n", i);
             printf("Selection %d moved x:%f y:%f\n", i,
-                   start_cats[i].center.x - last_areas[i].center.x,
-                   start_cats[i].center.y - last_areas[i].center.y);
-            (*p_callback)(start_cats[i].center.x - last_areas[i].center.x,
-                          start_cats[i].center.y - last_areas[i].center.y);
+                   start_cats[i].center.x - ouchat_last_areas[i].center.x,
+                   start_cats[i].center.y - ouchat_last_areas[i].center.y);
+            (*p_callback)(start_cats[i].center.x - ouchat_last_areas[i].center.x,
+                          start_cats[i].center.y - ouchat_last_areas[i].center.y);
 
         }
     }
@@ -223,6 +304,6 @@ uint8_t ouchat_handle_data(
 
 #endif
     memcpy(last_sum_data, sum_data, sizeof(sum_data));
-    memcpy(last_areas, temp_areas, sizeof(temp_areas));
+    memcpy(ouchat_last_areas, temp_areas, sizeof(temp_areas));
     return 0;
 }

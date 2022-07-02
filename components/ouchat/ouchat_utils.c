@@ -3,6 +3,7 @@
 //
 
 #include "ouchat_utils.h"
+#include "ouchat_processing.h"
 
 uint8_t memory_swap(uint8_t source, uint8_t destination, area_t *p_array) {
     area_t temp_source = *(p_array + source);
@@ -29,4 +30,13 @@ double_t area_difference(
     temp_difference += point_distance(a_cat.bottom_right, b_cat.bottom_right);
     temp_difference += point_distance(a_cat.top_left, b_cat.top_left);
     return temp_difference;
+}
+
+int area_address_compar (const void* p1, const void* p2){
+
+    if(ouchat_last_areas[*(uint8_t *)p1].sum == 0 && ouchat_last_areas[*(uint8_t *)p2].sum == 0 ){
+        return ( *(uint8_t*)p1 - *(uint8_t*)p2 );
+    }
+
+    return ouchat_last_areas[*(uint8_t *)p2].sum - ouchat_last_areas[*(uint8_t *)p1].sum;
 }
