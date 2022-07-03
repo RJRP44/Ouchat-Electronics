@@ -16,20 +16,43 @@ A project using [vl53l5cx](https://www.st.com/en/imaging-and-photonics-solutions
 
 ## 📌 Contents
 
+* [Settings](#settings)
+* [Libraries](#libraries)
 * [Structure](#structure)
 
 ---
 
+### Settings
 
+This project has 2 value that must be assigned to work properly.
+In order to configure them, you must run this command in your project folder :
+```bash 
+> idf.py menuconfig
+```
+Next go to `Ouchat Configuration` category. 
+
+The values to be assigned are :
+- Ouchat Secret Key
+- Ouchat Cat ID
+
+---
+
+### 💾 Libraries 
+
+This project is using my [V53L5CX-Library](https://github.com/RJRP44/V53L5CX-Library) for esp-idf framwork (all the source code is available on github).
+
+---
 ### Structure
 
 ```
 ├── CMakeLists.txt
 ├── 📁 components /        
 │   ├── 📁 ouchat /
+│   │   ├── ouchat_api.c
 │   │   ├── ouchat_processing.c
 │   │   ├── ouchat_utils.c
 │   │   └── 📁 include / 
+│   │       ├── ouchat_api.h
 │   │       ├── ouchat_processing.h
 │   │       └── ouchat_utils.h     
 │   └── 📁 Vl53l5cx /
