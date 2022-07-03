@@ -123,7 +123,7 @@ void https_request_task(void * pvparameters)
     ESP_LOGI(TAG, "%s", OUCHAT_API_REQUEST );
     ESP_LOGI(TAG, "Start https_request example");
 
-    //https_get_request_using_crt_bundle();
+    https_get_request_using_crt_bundle();
 
     ESP_LOGI(TAG, "Minimum free heap size: %d bytes", esp_get_minimum_free_heap_size());
     ESP_LOGI(TAG, "Finish https_request example");
