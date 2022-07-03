@@ -82,16 +82,14 @@ static void event_handler(void* arg, esp_event_base_t event_base,
     if(y > 6.00){
         printf("Outside\n");
         TaskHandle_t xHandle = NULL;
-        uint8_t args = 0;
 
-        xTaskCreate(https_request_task, "https_get_task", 8192, (void *)&args, 5, &xHandle);
+        xTaskCreate(https_request_task, "https_get_task", 8192, ( void * ) 0, 5, &xHandle);
         configASSERT( xHandle );
     }else if(y < -6.00){
         printf("Inside\n");
         TaskHandle_t xHandle = NULL;
-        uint8_t args_inside = 1;
 
-        xTaskCreate(https_request_task, "https_get_task", 8192, (void *)&args_inside, 5, &xHandle);
+        xTaskCreate(https_request_task, "https_get_task", 8192, ( void * ) 1, 5, &xHandle);
         configASSERT( xHandle );
     }
 }
