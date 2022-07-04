@@ -70,7 +70,7 @@ static uint8_t process_cutting(
 uint8_t ouchat_handle_data(
         const int16_t input_data[64],
         const int16_t data_background[64],
-        void (*p_callback)(double_t, double_t)
+        void (*p_callback)(double_t, double_t, area_t, area_t)
 ) {
 
     uint16_t negative_data[64];
@@ -314,7 +314,8 @@ uint8_t ouchat_handle_data(
                    start_cats[i].center.x - ouchat_last_areas[i].center.x,
                    start_cats[i].center.y - ouchat_last_areas[i].center.y);
             (*p_callback)(start_cats[i].center.x - ouchat_last_areas[i].center.x,
-                          start_cats[i].center.y - ouchat_last_areas[i].center.y);
+                          start_cats[i].center.y - ouchat_last_areas[i].center.y,
+                          start_cats[i],ouchat_last_areas[i]);
 
         }
     }

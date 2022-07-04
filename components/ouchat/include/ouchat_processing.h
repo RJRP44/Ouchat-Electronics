@@ -56,7 +56,7 @@ uint8_t ouchat_negative_data(
 uint8_t ouchat_handle_data(
         const int16_t input_data[64],
         const int16_t data_background[64],
-        void (*p_callback)(double_t, double_t)
+        void (*p_callback)(double_t, double_t, area_t, area_t)
 );
 
 /**
