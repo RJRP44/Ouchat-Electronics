@@ -15,11 +15,7 @@
 #include "esp_system.h"
 #include "esp_wifi.h"
 #include "esp_event.h"
-#include "esp_log.h"
 #include "nvs_flash.h"
-
-#include "lwip/err.h"
-#include "lwip/sys.h"
 
 static const char *TAG = "v53l5cx_lib";
 
@@ -53,8 +49,6 @@ static esp_err_t i2c_master_init(void) {
 
 static int s_retry_num = 0;
 static EventGroupHandle_t s_wifi_event_group;
-
-void ouchat_prepare_data(int16_t pInt[64], int16_t pInt1[64], void (*pFunction)(uint8_t, uint8_t));
 
 static void event_handler(void* arg, esp_event_base_t event_base,
                           int32_t event_id, void* event_data)
@@ -108,7 +102,7 @@ _Noreturn void app_main(void) {
     ESP_ERROR_CHECK(i2c_master_init());
     ESP_LOGI(TAG, "I2C initialized successfully");
 
-    uint8_t status, isAlive, i , isReady;
+    uint8_t status, isAlive, isReady;
 
     //Define the i2c address and port
     VL53L5CX_Configuration *configuration = malloc(sizeof *configuration);
@@ -147,11 +141,10 @@ _Noreturn void app_main(void) {
     uint8_t resolution;
     vl53l5cx_get_resolution(configuration,&resolution);
     printf("resolution : %d \n", (uint8_t) sqrt(resolution));
-    status = vl53l5cx_start_ranging(configuration);
+    vl53l5cx_start_ranging(configuration);
 
     VL53L5CX_ResultsData results;
     area_t output[16];
-    area_t *p_output = &output[0];
     int16_t background[64];
     uint8_t hasback = 0;
 
@@ -229,7 +222,7 @@ _Noreturn void app_main(void) {
     while (1) {
 
         memset(output,0,64);
-        status = vl53l5cx_check_data_ready(configuration, &isReady);
+        vl53l5cx_check_data_ready(configuration, &isReady);
         if (isReady) {
             vl53l5cx_get_ranging_data(configuration, &results);
             if(hasback == 0){
