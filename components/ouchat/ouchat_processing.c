@@ -13,15 +13,15 @@ uint8_t last_address = 0x01;
 area_t start_cats[17];
 
 uint8_t ouchat_negative_data(
-        const uint8_t trigger_value,
-        const int16_t input_data[64],
-        const int16_t data_background[64],
+        const double_t trigger_value,
+        const double_t input_data[64],
+        double_t data_background,
         uint16_t *p_output_data
 ) {
     for (int i = 0; i < 64; ++i) {
         *(p_output_data + i) = 0;
-        if (data_background[i] - input_data[i] > trigger_value) {
-            *(p_output_data + i) = data_background[i] - input_data[i] - trigger_value;
+        if (data_background - input_data[i] > trigger_value) {
+            *(p_output_data + i) = data_background - input_data[i] - trigger_value;
         }
     }
     return 0;
@@ -69,7 +69,7 @@ static uint8_t process_cutting(
 
 uint8_t ouchat_handle_data(
         const int16_t input_data[64],
-        const int16_t data_background[64],
+        int16_t data_background,
         void (*p_callback)(double_t, double_t, area_t, area_t)
 ) {
 
@@ -86,8 +86,15 @@ uint8_t ouchat_handle_data(
         areas[i].sum = 0;
     }
 
+    double_t temp_input_data[64];
+
+    //Correct all values
+    for (int i = 0; i < 64; ++i) {
+        temp_input_data[i] = input_data[i] * cos((3 + 10.3125 + 5.625 * (i % 8)) * PI / 180.0 );
+    }
+
     //Get all the values above the floor
-    ouchat_negative_data(200, input_data, data_background, &negative_data[0]);
+    ouchat_negative_data(200.00, temp_input_data, data_background, &negative_data[0]);
 
     uint8_t remaining_address[16];
     uint8_t shift_address = 0;
@@ -319,7 +326,7 @@ uint8_t ouchat_handle_data(
 
         }
     }
-
+#endif
     for (int j = 0; j < 64; ++j) {
         if (j % 8 == 0) {
             printf("\n");
@@ -333,7 +340,7 @@ uint8_t ouchat_handle_data(
     }
     printf("\n");
 
-#endif
+
     memcpy(last_sum_data, sum_data, sizeof(sum_data));
     memcpy(ouchat_last_areas, temp_areas, sizeof(temp_areas));
     return 0;

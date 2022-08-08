@@ -132,14 +132,13 @@ _Noreturn void app_main(void) {
     }
 
     status = vl53l5cx_set_ranging_frequency_hz(configuration, 15);
-    if(status)
-    {
+    if (status) {
         printf("vl53l5cx_set_ranging_frequency_hz failed, status %u\n", status);
         while (1);
     }
 
     uint8_t resolution;
-    vl53l5cx_get_resolution(configuration,&resolution);
+    vl53l5cx_get_resolution(configuration, &resolution);
     printf("resolution : %d \n", (uint8_t) sqrt(resolution));
     vl53l5cx_start_ranging(configuration);
 
@@ -191,9 +190,9 @@ _Noreturn void app_main(void) {
                     .threshold.authmode = ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD,
             },
     };
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
-    ESP_ERROR_CHECK(esp_wifi_start() );
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
+    ESP_ERROR_CHECK(esp_wifi_start());
 
     ESP_LOGI(TAG, "wifi_init_sta finished.");
 
@@ -225,18 +224,9 @@ _Noreturn void app_main(void) {
         vl53l5cx_check_data_ready(configuration, &isReady);
         if (isReady) {
             vl53l5cx_get_ranging_data(configuration, &results);
-            if(hasback == 0){
-                hasback = 1;
-                for (int j = 0; j < 64; ++j) {
-                    background[j] = results.distance_mm[VL53L5CX_NB_TARGET_PER_ZONE*j];
-                }
-            }else{
-                ouchat_handle_data(results.distance_mm,background,&ouchat_event_handler);
-            }
+            ouchat_handle_data(results.distance_mm,660,&ouchat_event_handler);
         }
 
         WaitMs(&(configuration->platform), 5);
     }
-
-
 }

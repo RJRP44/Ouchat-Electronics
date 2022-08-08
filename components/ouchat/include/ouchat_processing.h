@@ -21,6 +21,8 @@
 #define ABSCISSA_SUM 1
 #define ORDINATE_SUM 2
 
+#define PI 3.14159265
+
 /**
  * @brief return the smallest value
  */
@@ -33,15 +35,15 @@ extern area_t ouchat_last_areas[16];
 /**
  * @brief This function is used to extract object from reads
  * @param (uint8_t) trigger_value : minimum size of objects
- * @param (int16_t) input_data : data to convert
+ * @param (double_t) input_data : data to convert
  * @param (int16_t) data_background : background to separate objects
  * @param (uint16_t) *p_output_data
  * @return (uint8_t) status : 0 if inverting is OK.
  */
 uint8_t ouchat_negative_data(
-        uint8_t trigger_value,
-        const int16_t input_data[64],
-        const int16_t data_background[64],
+        const double_t trigger_value,
+        const double_t input_data[64],
+        double_t data_background,
         uint16_t *p_output_data
 );
 
@@ -55,7 +57,7 @@ uint8_t ouchat_negative_data(
 
 uint8_t ouchat_handle_data(
         const int16_t input_data[64],
-        const int16_t data_background[64],
+        int16_t data_background,
         void (*p_callback)(double_t, double_t, area_t, area_t)
 );
 
