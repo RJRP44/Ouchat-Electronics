@@ -90,6 +90,10 @@ uint8_t ouchat_handle_data(
 
     //Correct all values
     for (int i = 0; i < 64; ++i) {
+        if(input_data[i] == 0){
+            temp_input_data[i] = data_background;
+            continue;
+        }
         temp_input_data[i] = input_data[i] * cos((3 + 10.3125 + 5.625 * (i % 8)) * PI / 180.0);
     }
 
