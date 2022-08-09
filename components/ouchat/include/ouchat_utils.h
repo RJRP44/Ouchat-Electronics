@@ -34,6 +34,7 @@ typedef struct {
     uint8_t bottom_right;
     point_t center;
     uint8_t sum;
+    point_t left_center;
 } area_t;
 
 /**

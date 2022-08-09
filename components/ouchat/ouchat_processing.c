@@ -90,7 +90,7 @@ uint8_t ouchat_handle_data(
 
     //Correct all values
     for (int i = 0; i < 64; ++i) {
-        temp_input_data[i] = input_data[i] * cos((3 + 10.3125 + 5.625 * (i % 8)) * PI / 180.0 );
+        temp_input_data[i] = input_data[i] * cos((3 + 10.3125 + 5.625 * (i % 8)) * PI / 180.0);
     }
 
     //Get all the values above the floor
@@ -216,7 +216,8 @@ uint8_t ouchat_handle_data(
     //Temporarily addressing all areas
     for (int i = 0; i < 64; ++i) {
         if (negative_data[i] > 0 && area_address[i] == 16) {
-            printf("changing on %d, on %d (%d;%d) a : %d", remaining_address[0], i, ABSCISSA_FROM_1D(i), ORDINATE_FROM_1D(i), area_address[i]);
+            printf("changing on %d, on %d (%d;%d) a : %d", remaining_address[0], i, ABSCISSA_FROM_1D(i),
+                   ORDINATE_FROM_1D(i), area_address[i]);
             process_cutting(&area_address[0], negative_data, i, remaining_address[0]);
             memmove(remaining_address, remaining_address + 1, 15 * sizeof(uint8_t));
             remaining_address[15] = 16;
@@ -275,6 +276,26 @@ uint8_t ouchat_handle_data(
         }
     }
 
+    //Get the left part of each area
+    for (int i = 0; i < 16; ++i) {
+        uint16_t left_sum[2];
+        memset(left_sum, 0, sizeof left_sum);
+        for (int j = 0; j < 64; ++j) {
+            if (area_address[j] == i) {
+                for (int k = 0; k < 8; ++k) {
+                    uint8_t address = POINT_TO_1D(k, ORDINATE_FROM_1D(j));
+                    if (area_address[address] == i) {
+                        left_sum[1] += 1 + k;
+                        left_sum[TOTAL_SUM]++;
+                    }
+                }
+                areas[i].left_center.x = ORDINATE_FROM_1D(j);
+                areas[i].left_center.y = (double_t) left_sum[1] / left_sum[TOTAL_SUM] - 1;
+                break;
+            }
+        }
+    }
+
     //Calculates center of areas
     for (int i = 0; i < 16; ++i) {
         if (sum_data[TOTAL_SUM][i] > 0) {
@@ -292,13 +313,15 @@ uint8_t ouchat_handle_data(
     for (int i = 0; i < 16; ++i) {
         if (ouchat_last_areas[i].bottom_right > 0 || sum_data[TOTAL_SUM][i] > 0) {
 
-            printf("zone %d : c(%f,%f) tl(%d,%d) br(%d,%d) sum=%d difference with : 1= %f, 2= %f, 3= %f\n", i,
+            printf("zone %d : c(%f,%f) tl(%d,%d) br(%d,%d) cl(%f,%f) sum=%d difference with : 1= %f, 2= %f, 3= %f\n", i,
                    temp_areas[i].center.x,
                    temp_areas[i].center.y,
                    ABSCISSA_FROM_1D(temp_areas[i].top_left),
                    ORDINATE_FROM_1D(temp_areas[i].top_left),
                    ABSCISSA_FROM_1D(temp_areas[i].bottom_right),
                    ORDINATE_FROM_1D(temp_areas[i].bottom_right),
+                   temp_areas[i].left_center.x,
+                   temp_areas[i].left_center.y,
                    sum_data[TOTAL_SUM][i],
                    area_difference(ouchat_last_areas[1], temp_areas[i]),
                    area_difference(ouchat_last_areas[2], temp_areas[i]),
@@ -322,7 +345,7 @@ uint8_t ouchat_handle_data(
                    start_cats[i].center.y - ouchat_last_areas[i].center.y);
             (*p_callback)(start_cats[i].center.x - ouchat_last_areas[i].center.x,
                           start_cats[i].center.y - ouchat_last_areas[i].center.y,
-                          start_cats[i],ouchat_last_areas[i]);
+                          start_cats[i], ouchat_last_areas[i]);
 
         }
     }

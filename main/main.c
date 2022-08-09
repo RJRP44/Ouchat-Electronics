@@ -74,7 +74,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
 
  static void ouchat_event_handler(double_t x, double_t y, area_t start, area_t end){
     if(y >= 4.5){
-        if(end.center.x >= 2 && end.center.x < 6){
+        if(end.left_center.x >= 2 && end.left_center.x < 6){
             printf("Outside\n");
             TaskHandle_t xHandle = NULL;
 
@@ -84,7 +84,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
             printf("Fake Outside\n");
         }
     }else if(y <= -4.5){
-        if(start.center.x > 2 && start.center.x < 6){
+        if(start.left_center.x > 2 && start.left_center.x < 6){
             printf("Inside\n");
             TaskHandle_t xHandle = NULL;
 
