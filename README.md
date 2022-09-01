@@ -6,6 +6,7 @@
 <p align="center"><img src="https://img.shields.io/badge/version-6.0.0-blue" alt="version">
 <img src="https://img.shields.io/badge/framework-esp--idf-lightgrey" alt="platform">
 <img src="https://img.shields.io/github/license/RJRP44/Ouchat-Electronics" alt="license">
+<img src="https://img.shields.io/badge/reliability-95.7%25-orange" alt="reliability">
 </p>
 
 
