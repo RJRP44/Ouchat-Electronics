@@ -90,7 +90,7 @@ uint8_t ouchat_handle_data(
 
     //Correct all values
     for (int i = 0; i < 64; ++i) {
-        if(input_data[i] == 0){
+        if(input_data[i] < 90){
             temp_input_data[i] = data_background;
             continue;
         }
@@ -293,8 +293,8 @@ uint8_t ouchat_handle_data(
                         left_sum[TOTAL_SUM]++;
                     }
                 }
-                areas[i].left_center.x = ORDINATE_FROM_1D(j);
-                areas[i].left_center.y = (double_t) left_sum[1] / left_sum[TOTAL_SUM] - 1;
+                areas[i].left_center.y = ORDINATE_FROM_1D(j);
+                areas[i].left_center.x = (double_t) left_sum[1] / left_sum[TOTAL_SUM] - 1;
                 break;
             }
         }
