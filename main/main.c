@@ -85,7 +85,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
             printf("Fake Outside\n");
         }
     }else if(y <= -4.5){
-        if(start.center.y >= 2 ){
+        if(start.center.y <= 2 ){
             printf("Inside\n");
             TaskHandle_t xHandle = NULL;
 
