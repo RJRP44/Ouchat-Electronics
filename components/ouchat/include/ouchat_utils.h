@@ -35,6 +35,8 @@ typedef struct {
     point_t center;
     uint8_t sum;
     point_t left_center;
+    uint16_t indexes[64];
+    int8_t size;
 } area_t;
 
 /**
@@ -49,6 +51,22 @@ uint8_t memory_swap(
         uint8_t source,
         uint8_t destination,
         area_t *p_array
+);
+
+/**
+ * @brief This function is used to find the index of an element
+ * @param (const *uint8_t) p_array
+ * @param (uint8_t) array_size
+ * @param (uint8_t) element
+ * @param (*int8_t) pos
+ * @return
+ */
+
+uint8_t array_find(
+        const uint8_t *p_array,
+        int8_t array_size,
+        uint8_t element,
+        int8_t *pos
 );
 
 /**
@@ -87,5 +105,16 @@ double_t area_difference(
  *               >0 : if p1 is smaller than p2.
  */
 int area_address_compar (const void* p1, const void* p2);
+
+/**
+ * @brief This function is used to calculate the distance
+ * between the center of the area and 2 point for qsort
+ * @param (const void*) p1 : 1st address to compare
+ * @param (const void*) p2 : 2nd address to compare
+ * @return (int) <0 : if p1 is farther than p2,
+ *                0 : if p1 equals p2,
+ *               >0 : if p1 is closest than p2.
+ */
+int area_points_compar(const void* p1, const void* p2);
 
 #endif //OUCHAT_ELECTRONICS_OUCHAT_UTILS_H

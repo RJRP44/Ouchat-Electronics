@@ -31,6 +31,7 @@
 #define HIGHEST(a, b) a > (b) ? (a) : b
 
 extern area_t ouchat_last_areas[16];
+extern area_t ouchat_areas[16];
 
 /**
  * @brief This function is used to extract object from reads
