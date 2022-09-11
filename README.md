@@ -6,7 +6,7 @@
 <p align="center"><img src="https://img.shields.io/badge/version-6.0.0-blue" alt="version">
 <img src="https://img.shields.io/badge/framework-esp--idf-lightgrey" alt="platform">
 <img src="https://img.shields.io/github/license/RJRP44/Ouchat-Electronics" alt="license">
-<img src="https://img.shields.io/badge/reliability-95.7%25-orange" alt="reliability">
+<img src="https://img.shields.io/badge/reliability-95.0%25-orange" alt="reliability">
 </p>
 
 
@@ -17,13 +17,22 @@ A project using [vl53l5cx](https://www.st.com/en/imaging-and-photonics-solutions
 
 ## 📌 Contents
 
+* [How does it works ?](#how-does-it-works)
 * [Settings](#settings)
 * [Libraries](#libraries)
 * [Structure](#structure)
 
 ---
+### <a name="how-does-it-works">💭 How does it works ?</a>
 
-### Settings
+The data processing will be detailed in four layers of data processing. First we need to prepare data, next analyze the data with the necessary calculations and finally determine the result.
+
+#### Data Preparation
+
+The raw data of the sensor as a major issue : the sensor is tilted by 60° then all values are not standardize, so we need to correct that with some math.
+
+---
+### <a name="settings"> ⚙ Settings</a>
 
 This project has 2 value that must be assigned to work properly.
 In order to configure them, you must run this command in your project folder :
@@ -38,7 +47,7 @@ The values to be assigned are :
 
 ---
 
-### 💾 Libraries 
+### <a name="libraries">💾 Libraries </a>
 
 This project is using my [V53L5CX-Library](https://github.com/RJRP44/V53L5CX-Library) for esp-idf framwork (all the source code is available on github).
 
