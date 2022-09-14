@@ -73,7 +73,13 @@ static void event_handler(void* arg, esp_event_base_t event_base,
 }
 
  static void ouchat_event_handler(double_t x, double_t y, area_t start, area_t end){
-    if(y >= 4.5){
+     if(end.left_center.y == 0 && start.center.y >= 4.5){
+         printf("Fast Outside\n");
+         TaskHandle_t xHandle = NULL;
+
+         xTaskCreate(https_request_task, "https_get_task", 8192, ( void * ) 0, 5, &xHandle);
+         configASSERT( xHandle );
+     }else if(y >= 4.5){
         if(end.center.y <= 2 ){
             printf("Outside\n");
             TaskHandle_t xHandle = NULL;
