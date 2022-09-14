@@ -63,6 +63,17 @@ uint8_t ouchat_handle_data(
 );
 
 /**
+ * @brief This function is used to get the context of the detection
+ * @param (int16_t) input_data
+ * @param (*int16_t) p_output_data
+ * @return (uint8_t) status : 0 if processing is OK.
+ */
+uint8_t ouchat_get_context(
+        const int16_t input_data[64],
+        int16_t *p_output_data
+);
+
+/**
  * @brief Inner function, not available outside this file. This function is used
  * recursively to cut out the cat from VL53L5CX output.
  * @param (*uint8_t) p_output : output data

@@ -218,6 +218,7 @@ _Noreturn void app_main(void) {
     }
     //https_request_task(NULL);
 
+    int16_t context = 0;
 
     while (1) {
 
@@ -225,7 +226,10 @@ _Noreturn void app_main(void) {
         vl53l5cx_check_data_ready(configuration, &isReady);
         if (isReady) {
             vl53l5cx_get_ranging_data(configuration, &results);
-            ouchat_handle_data(results.distance_mm,660,&ouchat_event_handler);
+            if(context == 0){
+                ouchat_get_context(results.distance_mm, &context);
+            }
+            ouchat_handle_data(results.distance_mm,context,&ouchat_event_handler);
         }
 
         WaitMs(&(configuration->platform), 5);

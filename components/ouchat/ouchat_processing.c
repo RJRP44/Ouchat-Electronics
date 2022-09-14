@@ -68,6 +68,27 @@ static uint8_t process_cutting(
     }
     return 0;
 }
+uint8_t ouchat_get_context(
+        const int16_t input_data[64],
+        int16_t *p_output_data
+) {
+    double_t total = 0;
+    uint8_t shift_address = 0;
+
+    //Correct all values
+    for (int i = 0; i < 64; ++i) {
+        if(input_data[i] < 90){
+            total += 0;
+            ++shift_address;
+            continue;
+        }
+        total += input_data[i] * cos((3 + 10.3125 + 5.625 * (i % 8)) * PI / 180.0);
+    }
+
+    *p_output_data = (int16_t) (total / (64 - shift_address));
+
+    return 0;
+}
 
 uint8_t ouchat_handle_data(
         const int16_t input_data[64],
@@ -100,7 +121,7 @@ uint8_t ouchat_handle_data(
     }
 
     //Get all the values above the floor
-    ouchat_negative_data(200.00, temp_input_data, data_background, &negative_data[0]);
+    ouchat_negative_data(150.00, temp_input_data, data_background, &negative_data[0]);
 
     uint8_t remaining_address[16];
     uint8_t shift_address = 0;
