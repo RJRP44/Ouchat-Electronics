@@ -6,7 +6,7 @@
 <p align="center"><img src="https://img.shields.io/badge/version-6.0.0-blue" alt="version">
 <img src="https://img.shields.io/badge/framework-esp--idf-lightgrey" alt="platform">
 <img src="https://img.shields.io/github/license/RJRP44/Ouchat-Electronics" alt="license">
-<img src="https://img.shields.io/badge/reliability-95.0%25-orange" alt="reliability">
+<img src="https://v2.api.ouchat.fr/api/debug/reliability?cat=1uyq8" alt="reliability">
 </p>
 
 
