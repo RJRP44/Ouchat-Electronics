@@ -117,4 +117,8 @@ int area_address_compar (const void* p1, const void* p2);
  */
 int area_points_compar(const void* p1, const void* p2);
 
+int destroy_compar(const void *p1, const void *p2);
+
+int destroy_priority(uint8_t i, int8_t *priority, const uint8_t p_input[64]);
+
 #endif //OUCHAT_ELECTRONICS_OUCHAT_UTILS_H

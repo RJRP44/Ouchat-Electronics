@@ -32,6 +32,7 @@
 
 extern area_t ouchat_last_areas[16];
 extern area_t ouchat_areas[16];
+extern uint8_t ouchat_temp_data[64];
 
 /**
  * @brief This function is used to extract object from reads
@@ -87,6 +88,12 @@ static uint8_t process_cutting(
         uint16_t p_input[64],
         uint8_t i,
         uint8_t sln
+);
+
+uint8_t ouchat_pole_of_inaccessibility(
+        area_t cat,
+        double_t *x,
+        double_t *y
 );
 
 #endif //OUCHAT_PROCESSOR_H_

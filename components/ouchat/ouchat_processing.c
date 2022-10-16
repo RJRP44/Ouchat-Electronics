@@ -9,10 +9,164 @@
 
 area_t ouchat_last_areas[16];
 area_t ouchat_areas[16];
+uint8_t ouchat_temp_data[64];
 
 uint16_t last_sum_data[3][16];
 uint8_t last_address = 0x01;
 area_t start_cats[17];
+
+uint8_t ouchat_pole_of_inaccessibility(area_t cat, double_t *x, double_t *y){
+    //Define all stacks
+
+    printf("\n - - - - - - Calculate pole - - - - - - - - \n");
+
+    int8_t head_stack[64];
+    int8_t stack[64];
+
+    uint8_t head_stack_size = 0;
+    uint8_t stack_size = 0;
+
+    memset(head_stack, -1, sizeof head_stack);
+    memset(stack, -1, sizeof stack);
+
+    //Get values from the processing
+    stack_size = cat.sum;
+
+    //extract cat indexes i
+    for (int i = 0; i < 64; ++i) {
+        stack[i] = cat.indexes[i] >> 4;
+        --stack[i];
+        if(cat.indexes[i] == 0){
+            stack[i] = -1;
+        }
+    }
+
+    //Loop until all the stack is gone
+    while (stack_size != 0) {
+        //Sort by priority
+        qsort(stack, stack_size, sizeof(uint8_t), destroy_compar);
+
+        printf("PRIORITY : [");
+        for (int j = 0; j < 64; ++j) {
+            if (stack[j] == -1) {
+                break;
+            }
+            if (j > 0) {
+                printf(",");
+            }
+            printf("%d", stack[j]);
+
+        }
+        printf("]\n");
+
+        //Clear the head
+        memset(head_stack, -1, sizeof head_stack);
+
+        printf("[%d]::",stack_size);
+
+        for (int i = 0; i < stack_size; ++i) {
+
+            int8_t priority = 0;
+            destroy_priority(stack[i], &priority, ouchat_temp_data);
+
+            printf("(%d)%d::%d;",i,stack[i],priority);
+
+            //Wait a none on a side tile
+            if (priority == 0 || i + 1 == stack_size) {
+
+                head_stack_size = i;
+                memcpy(head_stack, stack, head_stack_size * sizeof(uint8_t));
+
+                if(stack_size == 1 && i == 0){
+                    goto center;
+                }
+
+                //Delete all side tiles
+                while (head_stack_size > 0) {
+                    //Sort by priority
+                    qsort(head_stack, head_stack_size, sizeof(uint8_t), destroy_compar);
+
+                    printf("SUB-PRIORITY : [");
+                    for (int j = 0; j < 64; ++j) {
+                        if (head_stack[j] == -1) {
+                            break;
+                        }
+                        if (j > 0) {
+                            printf(",");
+                        }
+                        printf("%d", head_stack[j]);
+
+                    }
+                    printf("]\n");
+
+                    int8_t last_priority = 5;
+
+                    printf("[%d!%d]::",head_stack_size,stack_size);
+
+                    for (int n = 1; n < head_stack_size + 1; ++n) {
+
+                        priority = 0;
+                        destroy_priority(head_stack[n-1], &priority, ouchat_temp_data);
+
+                        printf("(%d)%d::%d;",n-1,head_stack[n-1],priority);
+
+                        //Last tiles => the center
+                        if (head_stack_size == stack_size) {
+
+                            center:;
+
+                            //Calculate the center
+                            float x_sum = 0;
+                            float y_sum = 0;
+
+                            for (int j = 0; j < stack_size; ++j) {
+                                x_sum += ABSCISSA_FROM_1D(stack[j]);
+                                y_sum += ORDINATE_FROM_1D(stack[j]);
+                            }
+
+                            *x = x_sum / (float) stack_size;
+                            *y = y_sum / (float) stack_size;
+
+                            printf("CENTER AT X : %f, Y : %f", x_sum / (float) stack_size, y_sum / (float) stack_size);
+
+                            goto end;
+                        }
+
+                        if ((priority != last_priority && n != 1) || (n == 1 && head_stack_size == 1) || (n == head_stack_size)) {
+
+                            //Remove from the stack n elements
+                            for (int j = 0; j < n; ++j) {
+                                ouchat_temp_data[head_stack[j]] = 16;
+                            }
+
+                            stack_size -= n;
+                            head_stack_size -= n;
+
+                            //Remove all n elements
+                            memmove(stack, stack + n, (64 - n) * sizeof(uint8_t));
+                            memmove(head_stack, head_stack + n, (64 - n) * sizeof(uint8_t));
+
+                            for (int j = (64 - n); j < 64; ++j) {
+                                stack[j] = -1;
+                                head_stack[j] = -1;
+                            }
+
+                            printf("destroying %d elements at priority %d \n", n, last_priority);
+
+                            break;
+                        }
+
+                        last_priority = priority;
+                    }
+                }
+                break;
+            }
+        }
+    }
+
+    end:
+    return 0;
+}
 
 uint8_t ouchat_negative_data(
         const double_t trigger_value,
@@ -266,9 +420,18 @@ uint8_t ouchat_handle_data(
         if (sum_data[TOTAL_SUM][i] > 0) {
             ouchat_areas[i].center.x = (double_t) sum_data[ABSCISSA_SUM][i] / sum_data[TOTAL_SUM][i] - 1;
             ouchat_areas[i].center.y = (double_t) sum_data[ORDINATE_SUM][i] / sum_data[TOTAL_SUM][i] - 1;
+
+            double_t x = 0;
+            double_t y = 0;
+            printf("\n - - - - - - Start pole - - - - - - - - \n");
+            ouchat_pole_of_inaccessibility(ouchat_last_areas[i],&x,&y);
+            printf("\n - - - - - - End pole - - - - - - - - \n");
+            printf(" X: %f , Y: %f \n\n",x,y);
         }
         ouchat_areas[i].sum = sum_data[TOTAL_SUM][i];
     }
+
+    memcpy(ouchat_temp_data,area_address,sizeof ouchat_temp_data);
 
     area_t temp_areas[16];
     memcpy(temp_areas, ouchat_areas, sizeof(temp_areas));

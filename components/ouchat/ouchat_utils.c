@@ -89,3 +89,46 @@ int area_points_compar(const void *p1, const void *p2) {
     }
     return 0;
 }
+
+int destroy_priority(uint8_t i, int8_t *priority, const uint8_t p_input[64]) {
+    if(i < 0){
+        *priority = -1;
+        return 1;
+    }
+    if (p_input[i] == 16) {
+        *priority = -1;
+        return 1;
+    }
+
+    if (p_input[ORDINATE_FROM_1D(i) < 7 ? i + 1 : i] == 16 || ORDINATE_FROM_1D(i) >= 7) {
+        *priority += 1;
+    }
+    if (p_input[ORDINATE_FROM_1D(i) > 0 ? i - 1 : i] == 16 || ORDINATE_FROM_1D(i) <= 0) {
+        *priority += 1;
+    }
+    if (p_input[i < 56 ? i + 8 : i] == 16 || i >= 56) {
+        *priority += 1;
+    }
+    if (p_input[i > 7 ? i - 8 : i] == 16 || i <= 7) {
+        *priority += 1;
+    }
+    return 0;
+}
+
+int destroy_compar(const void *p1, const void *p2) {
+    int8_t p1_p = 0;
+    int8_t p2_p = 0;
+
+    if(*(uint8_t *) p1 == 0){
+        return -1;
+    }
+
+    if(*(uint8_t *) p2 == 0){
+        return 1;
+    }
+
+    destroy_priority((*(uint8_t *) p1), &p1_p, ouchat_temp_data);
+    destroy_priority((*(uint8_t *) p2), &p2_p, ouchat_temp_data);
+
+    return p2_p - p1_p;
+}
