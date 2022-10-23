@@ -8,6 +8,7 @@
 #include "vl53l5cx_api.h"
 #include "ouchat_processing.h"
 #include "ouchat_api.h"
+#include "ouchat_bt.h"
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -104,6 +105,9 @@ static void event_handler(void* arg, esp_event_base_t event_base,
 }
 
 _Noreturn void app_main(void) {
+
+    //Intit bluetooth
+    ouchat_bt_init();
 
     //Initialize the i2c bus
     ESP_ERROR_CHECK(i2c_master_init());
