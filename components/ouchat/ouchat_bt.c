@@ -12,17 +12,80 @@
 #include "esp_spp_api.h"
 #include "cJSON.h"
 #include "string.h"
+#include "esp_wifi.h"
+#include "sdkconfig.h"
 
-void ouchat_bt_gap_cb(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *param){
+#define DEFAULT_SCAN_LIST_SIZE 20
+
+uint8_t ouchat_bt_cmd_interpreter(uint8_t *input, char **cmd_arg, char **cmd_value) {
+    char *command = (char *) input;
+    char *ptr, *ptr1, *arg, *value;
+
+    ptr = strstr(command, "\n");
+    if(ptr){
+        *ptr = '\0';
+    }
+
+    char *cmd = malloc(strlen(command));
+    memcpy(cmd, command, strlen(command) * sizeof(char));
+    *(cmd + strlen(command)) = '\0';
+
+    if (strlen(cmd) < 4) {
+        return 1;
+    }
+
+    ptr = strstr(cmd, "OC+");
+    ptr = ptr + 2;
+
+    if (!ptr) {
+        free(cmd);
+        return 1;
+    }
+
+    ptr1 = strstr(cmd, "=");
+
+    ptr++;
+
+    if (!ptr1) {
+        arg = malloc(strlen(ptr) * sizeof(char));
+        memcpy(arg, ptr, strlen(ptr) * sizeof(char));
+        *(arg + strlen(ptr)) = '\0';
+        return 0;
+    }
+
+    //Extract the arg
+    arg = malloc((ptr1 - ptr) * sizeof(char));
+    memcpy(arg, ptr, (ptr1 - ptr) * sizeof(char));
+    *(arg + (ptr1 - ptr)) = '\0';
+
+    ptr1++;
+
+    //Extract the value
+    value = malloc(strlen(ptr1) * sizeof(char));
+    memcpy(value, ptr1, strlen(ptr1) * sizeof(char));
+    *(value + strlen(ptr1)) = '\0';
+
+    printf("%s\n", value);
+
+    printf("%s\n", arg);
+
+    *cmd_value = value;
+    *cmd_arg = arg;
+
+    free(cmd);
+    return 0;
+}
+
+void ouchat_bt_gap_cb(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *param) {
 
     //Secure Simple Pairing
-    if(event == ESP_BT_GAP_CFM_REQ_EVT){
+    if (event == ESP_BT_GAP_CFM_REQ_EVT) {
         ESP_LOGI(SPP_TAG, "ESP_BT_GAP_CFM_REQ_EVT Please compare the numeric value: %d", param->cfm_req.num_val);
         esp_bt_gap_ssp_confirm_reply(param->cfm_req.bda, true);
     }
 }
 
-void ouchat_bt_spp_cb(esp_spp_cb_event_t event, esp_spp_cb_param_t *param){
+void ouchat_bt_spp_cb(esp_spp_cb_event_t event, esp_spp_cb_param_t *param) {
 
     //Serial Port Protocol events
     switch (event) {
@@ -31,36 +94,77 @@ void ouchat_bt_spp_cb(esp_spp_cb_event_t event, esp_spp_cb_param_t *param){
         case ESP_SPP_INIT_EVT:
             esp_bt_dev_set_device_name(DEVICE_NAME);
             esp_bt_gap_set_scan_mode(ESP_BT_CONNECTABLE, ESP_BT_GENERAL_DISCOVERABLE);
-            esp_spp_start_srv(sec_mask,role_slave, 0, SPP_SERVER_NAME);
+            esp_spp_start_srv(sec_mask, role_slave, 0, SPP_SERVER_NAME);
             break;
 
             //When data is received from the SPP connection
         case ESP_SPP_DATA_IND_EVT:
+                    esp_log_buffer_char("Received String Data", param->data_ind.data, param->data_ind.len);
+            char *cmd, *arg;
 
-            esp_log_buffer_char("Received String Data",param->data_ind.data,param->data_ind.len);
+            if (ouchat_bt_cmd_interpreter(param->data_ind.data, &cmd, &arg)) {
+                return;
+            }
+
+            if (!strcmp("WSCAN", cmd)) {
+                uint16_t number = DEFAULT_SCAN_LIST_SIZE;
+                wifi_ap_record_t ap_info[DEFAULT_SCAN_LIST_SIZE];
+                uint16_t ap_count = 0;
+                memset(ap_info, 0, sizeof(ap_info));
+
+                ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+                ESP_ERROR_CHECK(esp_wifi_start());
+                esp_wifi_scan_start(NULL, true);
+                ESP_ERROR_CHECK(esp_wifi_scan_get_ap_records(&number, ap_info));
+                ESP_ERROR_CHECK(esp_wifi_scan_get_ap_num(&ap_count));
 
 
-            cJSON *aps = NULL;
-            cJSON *ap = NULL;
-            cJSON *ap_ssid = NULL;
-            cJSON *ap_rssi = NULL;
-            cJSON *ap_encryption = NULL;
+                cJSON *ap_list = NULL;
+                cJSON *aps = NULL;
+                cJSON *ap = NULL;
+                cJSON *ap_ssid = NULL;
+                cJSON *ap_rssi = NULL;
+                cJSON *ap_encryption = NULL;
 
-            aps = cJSON_CreateArray();
-
-            ap = cJSON_CreateObject();
-
-            ap_rssi = cJSON_CreateNumber(10);
-            cJSON_AddItemToObject(ap,"rssi",ap_rssi);
-
-            cJSON_AddItemToArray(aps,ap);
+                ap_list = cJSON_CreateObject();
 
 
-            char* message = "Received";
-            uint8_t* data = (uint8_t *) cJSON_PrintUnformatted(aps);
-            esp_spp_write(param->srv_open.handle, strlen( cJSON_PrintUnformatted(aps)), data);
+                aps = cJSON_CreateArray();
 
-            cJSON_Delete(aps);
+                for (int i = 0; (i < DEFAULT_SCAN_LIST_SIZE) && (i < ap_count); i++) {
+                    ap = cJSON_CreateObject();
+
+                    cJSON_AddItemToArray(aps, ap);
+
+                    ap_rssi = cJSON_CreateNumber(ap_info[i].rssi);
+                    cJSON_AddItemToObject(ap, "rssi", ap_rssi);
+                    ap_ssid = cJSON_CreateString((char *) ap_info[i].ssid);
+                    cJSON_AddItemToObject(ap, "ssid", ap_ssid);
+                    ap_encryption = cJSON_CreateNumber(ap_info[i].authmode == WIFI_AUTH_OPEN ? 0 : 1);
+                    cJSON_AddItemToObject(ap, "encryption", ap_encryption);
+                }
+
+                cJSON_AddItemToObject(ap_list,"APs",aps);
+
+                /*
+                if (arg) {
+                    free(arg);
+                }*/
+                //free(cmd);
+
+                uint8_t *data = (uint8_t *) cJSON_PrintUnformatted(ap_list);
+                printf("data : %s\n", data);
+                printf("%s\n", cJSON_PrintUnformatted(ap_list));
+                printf("%d\n", strlen(cJSON_PrintUnformatted(ap_list)));
+                esp_spp_write(param->srv_open.handle, strlen(cJSON_PrintUnformatted(ap_list)), data);
+                uint8_t *r = (uint8_t *) "\n";
+                esp_spp_write(param->srv_open.handle,strlen("\n"),r);
+
+                cJSON_Delete(ap_list);
+            }else if (!strcmp("ID", cmd)) {
+                uint8_t *data = (uint8_t *) CONFIG_OUCHAT_CAT;
+                esp_spp_write(param->srv_open.handle, strlen(CONFIG_OUCHAT_CAT) , data);
+            }
             break;
 
         default:
@@ -68,7 +172,7 @@ void ouchat_bt_spp_cb(esp_spp_cb_event_t event, esp_spp_cb_param_t *param){
     }
 }
 
-void ouchat_bt_init(){
+void ouchat_bt_init() {
     ESP_LOGI(SPP_TAG, "Initializing bluetooth");
 
     //Initialize the default NVS partition.
