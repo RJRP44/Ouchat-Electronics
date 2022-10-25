@@ -19,60 +19,30 @@
 
 uint8_t ouchat_bt_cmd_interpreter(uint8_t *input, char **cmd_arg, char **cmd_value) {
     char *command = (char *) input;
-    char *ptr, *ptr1, *arg, *value;
+    //char *ptr, *ptr1, *arg, *value;
+    char *ptr, *ptr1;
 
     ptr = strstr(command, "\n");
     if(ptr){
         *ptr = '\0';
     }
 
-    char *cmd = malloc(strlen(command));
-    memcpy(cmd, command, strlen(command) * sizeof(char));
-    *(cmd + strlen(command)) = '\0';
-
-    if (strlen(cmd) < 4) {
-        return 1;
-    }
-
-    ptr = strstr(cmd, "OC+");
-    ptr = ptr + 2;
-
+    //Check if it is a valid ouchat command
+    ptr = strstr(command, "OC+");
     if (!ptr) {
-        free(cmd);
         return 1;
     }
+    ptr = ptr + 3;
 
-    ptr1 = strstr(cmd, "=");
-
-    ptr++;
-
-    if (!ptr1) {
-        arg = malloc(strlen(ptr) * sizeof(char));
-        memcpy(arg, ptr, strlen(ptr) * sizeof(char));
-        *(arg + strlen(ptr)) = '\0';
-        return 0;
+    //Cut the command to get the command name & argument
+    ptr1 = strstr(command, "=");
+    if (ptr1) {
+        *ptr1 = '\0';
+        ptr1++;
+        *cmd_value= ptr1;
     }
+    *cmd_arg = ptr;
 
-    //Extract the arg
-    arg = malloc((ptr1 - ptr) * sizeof(char));
-    memcpy(arg, ptr, (ptr1 - ptr) * sizeof(char));
-    *(arg + (ptr1 - ptr)) = '\0';
-
-    ptr1++;
-
-    //Extract the value
-    value = malloc(strlen(ptr1) * sizeof(char));
-    memcpy(value, ptr1, strlen(ptr1) * sizeof(char));
-    *(value + strlen(ptr1)) = '\0';
-
-    printf("%s\n", value);
-
-    printf("%s\n", arg);
-
-    *cmd_value = value;
-    *cmd_arg = arg;
-
-    free(cmd);
     return 0;
 }
 
@@ -146,17 +116,9 @@ void ouchat_bt_spp_cb(esp_spp_cb_event_t event, esp_spp_cb_param_t *param) {
 
                 cJSON_AddItemToObject(ap_list,"APs",aps);
 
-                /*
-                if (arg) {
-                    free(arg);
-                }*/
-                //free(cmd);
-
                 uint8_t *data = (uint8_t *) cJSON_PrintUnformatted(ap_list);
-                printf("data : %s\n", data);
-                printf("%s\n", cJSON_PrintUnformatted(ap_list));
-                printf("%d\n", strlen(cJSON_PrintUnformatted(ap_list)));
                 esp_spp_write(param->srv_open.handle, strlen(cJSON_PrintUnformatted(ap_list)), data);
+
                 uint8_t *r = (uint8_t *) "\n";
                 esp_spp_write(param->srv_open.handle,strlen("\n"),r);
 
