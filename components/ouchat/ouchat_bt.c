@@ -22,10 +22,12 @@ uint8_t ouchat_bt_cmd_interpreter(uint8_t *input, char **cmd_arg, char **cmd_val
     //char *ptr, *ptr1, *arg, *value;
     char *ptr, *ptr1;
 
-    ptr = strstr(command, "\n");
-    if(ptr){
-        *ptr = '\0';
+    //Validate the ending of the command
+    ptr = strrchr(command,';');
+    if(!ptr){
+       return 1;
     }
+    *ptr = '\0';
 
     //Check if it is a valid ouchat command
     ptr = strstr(command, "OC+");
@@ -77,6 +79,8 @@ void ouchat_bt_spp_cb(esp_spp_cb_event_t event, esp_spp_cb_param_t *param) {
             }
 
             if (!strcmp("WSCAN", cmd)) {
+
+                //Scan all aps
                 uint16_t number = DEFAULT_SCAN_LIST_SIZE;
                 wifi_ap_record_t ap_info[DEFAULT_SCAN_LIST_SIZE];
                 uint16_t ap_count = 0;
@@ -88,7 +92,7 @@ void ouchat_bt_spp_cb(esp_spp_cb_event_t event, esp_spp_cb_param_t *param) {
                 ESP_ERROR_CHECK(esp_wifi_scan_get_ap_records(&number, ap_info));
                 ESP_ERROR_CHECK(esp_wifi_scan_get_ap_num(&ap_count));
 
-
+                //Create a json to list aps
                 cJSON *ap_list = NULL;
                 cJSON *aps = NULL;
                 cJSON *ap = NULL;
