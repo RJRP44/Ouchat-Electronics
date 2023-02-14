@@ -109,7 +109,7 @@ static void https_get_request_using_crt_bundle(void)
 void https_request_task(void * pvparameters)
 {
     strcpy(OUCHAT_API_REQUEST,"GET " WEB_URL);
-    printf("https : %d",(uint64_t)pvparameters);
+    printf("https : %llu",(uint64_t)pvparameters);
 
     if((uint64_t)pvparameters == 1){
         strcat(OUCHAT_API_REQUEST, "1");
@@ -125,7 +125,7 @@ void https_request_task(void * pvparameters)
 
     https_get_request_using_crt_bundle();
 
-    ESP_LOGI(TAG, "Minimum free heap size: %d bytes", esp_get_minimum_free_heap_size());
+    ESP_LOGI(TAG, "Minimum free heap size: %lu bytes", esp_get_minimum_free_heap_size());
     ESP_LOGI(TAG, "Finish https_request example");
     vTaskDelete(NULL);
 }

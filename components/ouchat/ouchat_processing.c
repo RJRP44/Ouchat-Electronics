@@ -278,7 +278,7 @@ uint8_t ouchat_handle_data(
     for (int i = 0; i < 16; ++i) {
         if (ouchat_last_areas[i].bottom_right > 0 || sum_data[TOTAL_SUM][i] > 0) {
 
-            printf("\nzone %d : c : %d c(%f,%f) tl(%d,%d) br(%d,%d) cl(%f,%f) sum=%d difference with : 1= %f, 2= %f, 3= %f [", i,
+            printf("\nzone %d : c : %f c(%f,%f) tl(%d,%d) br(%d,%d) cl(%f,%f) sum=%d difference with : 1= %f, 2= %f, 3= %f [", i,
                    (POINT_TO_1D(round(ouchat_areas[i].center.x), round(ouchat_areas[i].center.y))),
                    temp_areas[i].center.x,
                    temp_areas[i].center.y,

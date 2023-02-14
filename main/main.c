@@ -8,7 +8,6 @@
 #include "vl53l5cx_api.h"
 #include "ouchat_processing.h"
 #include "ouchat_api.h"
-#include "ouchat_bt.h"
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -17,13 +16,14 @@
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "nvs_flash.h"
+#include "ouchat_ble.h"
 
 static const char *TAG = "v53l5cx_lib";
 
-#define I2C_SDA_NUM                      21
-#define I2C_SCL_NUM                      22
+#define I2C_SDA_NUM                      1
+#define I2C_SCL_NUM                      2
 #define I2C_CLK_SPEED                    1000000
-#define I2C_TIMEOUT                      400000
+#define I2C_TIMEOUT                      0x0000001FU
 #define I2C_TX_BUF                       0
 #define I2C_RX_BUF                       0
 
@@ -106,8 +106,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
 
 _Noreturn void app_main(void) {
 
-    //Intit bluetooth
-    ouchat_bt_init();
+    ouchat_ble_init();
 
     //Initialize the i2c bus
     ESP_ERROR_CHECK(i2c_master_init());
@@ -123,14 +122,14 @@ _Noreturn void app_main(void) {
     //Wakeup the sensor
     status = vl53l5cx_is_alive(configuration, &isAlive);
     if (!isAlive || status) {
-        printf("VL53L5CX not detected at requested address\n");
+       ESP_LOGI(TAG,"VL53L5CX not detected at requested address");
         while (1);
     }
 
     /* (Mandatory) Init VL53L5CX sensor */
     status = vl53l5cx_init(configuration);
     if (status) {
-        printf("VL53L5CX ULD Loading failed\n");
+        ESP_LOGI(TAG,"VL53L5CX ULD Loading failed");
         while (1);
     }
 
@@ -167,6 +166,8 @@ _Noreturn void app_main(void) {
     ESP_ERROR_CHECK(ret);
 
 
+
+    /*
     s_wifi_event_group = xEventGroupCreate();
 
     ESP_ERROR_CHECK(esp_netif_init());
@@ -194,30 +195,30 @@ _Noreturn void app_main(void) {
     wifi_config_t wifi_config = {
             .sta = {
                     .ssid = CONFIG_ESP_WIFI_SSID,
-                    .password = CONFIG_ESP_WIFI_PASSWORD,
+                    .password = CONFIG_ESP_WIFI_PASSWORD,*/
                     /* Setting a password implies station will connect to all security modes including WEP/WPA.
                      * However these modes are deprecated and not advisable to be used. Incase your Access point
                      * doesn't support WPA2, these mode can be enabled by commenting below line */
-                    .threshold.authmode = ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD,
+                    /*.threshold.authmode = ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD,
             },
     };
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
 
-    ESP_LOGI(TAG, "wifi_init_sta finished.");
+    ESP_LOGI(TAG, "wifi_init_sta finished.");*/
 
     /* Waiting until either the connection is established (WIFI_CONNECTED_BIT) or connection failed for the maximum
      * number of re-tries (WIFI_FAIL_BIT). The bits are set by event_handler() (see above) */
-    EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
+    /*EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
                                            BIT0 | BIT1,
                                            pdFALSE,
                                            pdFALSE,
-                                           portMAX_DELAY);
+                                           portMAX_DELAY);*/
 
     /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
      * happened. */
-    if (bits & BIT0) {
+    /*if (bits & BIT0) {
         ESP_LOGI(TAG, "connected to ap SSID:%s password:%s",
                  CONFIG_ESP_WIFI_SSID, CONFIG_ESP_WIFI_PASSWORD);
     } else if (bits & BIT1) {
@@ -225,7 +226,7 @@ _Noreturn void app_main(void) {
                  CONFIG_ESP_WIFI_SSID, CONFIG_ESP_WIFI_PASSWORD);
     } else {
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
-    }
+    }*/
     //https_request_task(NULL);
 
     int16_t context = 0;
