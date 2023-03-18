@@ -16,6 +16,8 @@
 #include "nvs_flash.h"
 #include "ouchat_wifi_prov.h"
 #include "ouchat_wifi.h"
+#include "led_strip.h"
+#include "ouchat_led.h"
 
 static const char *TAG = "Ouchat-Main";
 
@@ -94,6 +96,20 @@ _Noreturn void app_main(void) {
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+
+    led_strip_handle_t led_strip;
+
+    //LED strip initialization
+    led_strip_config_t strip_config = DEFAULT_OUCHAT_LED_STRIP_CONFIG;
+    led_strip_rmt_config_t rmt_config = DEFAULT_OUCHAT_RMT_CONFIG;
+
+    ESP_ERROR_CHECK(led_strip_new_rmt_device(&strip_config, &rmt_config, &led_strip));
+
+    led_strip_clear(led_strip);
+
+    rgb_color off = {0,0,0};
+    rgb_color start = {20,20,20};
+    ouchat_animate(led_strip,SLIDE,10000, off,start);
 
     ouchat_init_provisioning();
 

@@ -1,4 +1,5 @@
 dependencies:
+  espressif/led_strip: "^2.3.0"
 
   #V53L5CX-Library
   vl53l5cx:
