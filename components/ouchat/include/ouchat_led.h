@@ -33,6 +33,6 @@ enum animation_type {
     FADE
 };
 
-void ouchat_animate(led_strip_handle_t led_strip, enum animation_type animation, uint16_t delay, rgb_color from, rgb_color to);
+void ouchat_animate(led_strip_handle_t led_strip, enum animation_type animation, uint16_t delay, rgb_color* from, rgb_color to);
 
 #endif //OUCHAT_ELECTRONICS_OUCHAT_LED_H

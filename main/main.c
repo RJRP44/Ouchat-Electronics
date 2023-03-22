@@ -28,6 +28,9 @@ static const char *TAG = "Ouchat-Main";
 #define I2C_TX_BUF                       0
 #define I2C_RX_BUF                       0
 
+led_strip_handle_t led_strip;
+rgb_color current_color;
+
 static esp_err_t i2c_master_init(void) {
 
     i2c_config_t conf = {
@@ -47,6 +50,9 @@ static esp_err_t i2c_master_init(void) {
 
  static void ouchat_event_handler(double_t x, double_t y, area_t start, area_t end){
      if(end.left_center.y == 0 && start.center.y >= 4.5){
+
+         ouchat_animate(led_strip,SLIDE,5000, &current_color,(rgb_color){27,0,0});
+
          printf("Fast Outside\n");
          TaskHandle_t xHandle = NULL;
 
@@ -54,6 +60,9 @@ static esp_err_t i2c_master_init(void) {
          configASSERT( xHandle );
      }else if(y >= 4.5){
         if(end.center.y <= 2 ){
+
+            ouchat_animate(led_strip,SLIDE,5000, &current_color,(rgb_color){27,0,0});
+
             printf("Outside\n");
             TaskHandle_t xHandle = NULL;
 
@@ -65,6 +74,9 @@ static esp_err_t i2c_master_init(void) {
         }
     }else if(y <= -4.5){
         if(start.center.y <= 2 ){
+
+            ouchat_animate(led_strip,SLIDE,5000, &current_color,(rgb_color){8,27,0});
+
             printf("Inside\n");
             TaskHandle_t xHandle = NULL;
 
@@ -97,8 +109,6 @@ _Noreturn void app_main(void) {
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
-    led_strip_handle_t led_strip;
-
     //LED strip initialization
     led_strip_config_t strip_config = DEFAULT_OUCHAT_LED_STRIP_CONFIG;
     led_strip_rmt_config_t rmt_config = DEFAULT_OUCHAT_RMT_CONFIG;
@@ -107,9 +117,9 @@ _Noreturn void app_main(void) {
 
     led_strip_clear(led_strip);
 
-    rgb_color off = {0,0,0};
-    rgb_color start = {20,20,20};
-    ouchat_animate(led_strip,SLIDE,10000, off,start);
+    current_color = (rgb_color){0,0,0};
+
+    ouchat_animate(led_strip,SLIDE,5000, &current_color,(rgb_color){20,20,20});
 
     ouchat_init_provisioning();
 
@@ -118,6 +128,8 @@ _Noreturn void app_main(void) {
         ESP_LOGI(TAG, "Starting provisioning...");
 
         ouchat_start_provisioning();
+
+        ouchat_animate(led_strip,SLIDE,5000, &current_color,(rgb_color){0,11,27});
 
     } else {
 
@@ -177,8 +189,8 @@ _Noreturn void app_main(void) {
 
     VL53L5CX_ResultsData results;
     area_t output[16];
-    int16_t background[64];
-    uint8_t hasback = 0;
+    //int16_t background[64];
+    //uint8_t hasback = 0;
 
     //Initialize NVS
     esp_err_t ret = nvs_flash_init();
@@ -193,14 +205,14 @@ _Noreturn void app_main(void) {
     while (1) {
 
         memset(output,0,64);
-       /* vl53l5cx_check_data_ready(configuration, &isReady);
+        vl53l5cx_check_data_ready(configuration, &isReady);
         if (isReady) {
             vl53l5cx_get_ranging_data(configuration, &results);
             if(context == 0){
                 ouchat_get_context(results.distance_mm, &context);
             }
             ouchat_handle_data(results.distance_mm,context,&ouchat_event_handler);
-        }*/
+        }
 
         WaitMs(&(configuration->platform), 5);
     }
