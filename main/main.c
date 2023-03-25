@@ -9,6 +9,10 @@
 #include "ouchat_processing.h"
 #include "ouchat_api.h"
 #include <string.h>
+#include <protocomm.h>
+#include <protocomm_ble.h>
+#include <protocomm_security2.h>
+#include <cJSON.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_wifi.h"
@@ -18,6 +22,7 @@
 #include "ouchat_wifi.h"
 #include "led_strip.h"
 #include "ouchat_led.h"
+#include "ouchat_protocomm.h"
 
 static const char *TAG = "Ouchat-Main";
 
@@ -48,42 +53,42 @@ static esp_err_t i2c_master_init(void) {
     return i2c_driver_install(I2C_NUM_1, conf.mode, I2C_RX_BUF, I2C_TX_BUF, 0);
 }
 
- static void ouchat_event_handler(double_t x, double_t y, area_t start, area_t end){
-     if(end.left_center.y == 0 && start.center.y >= 4.5){
+static void ouchat_event_handler(double_t x, double_t y, area_t start, area_t end) {
+    if (end.left_center.y == 0 && start.center.y >= 4.5) {
 
-         ouchat_animate(led_strip,SLIDE,5000, &current_color,(rgb_color){27,0,0});
+        ouchat_animate(led_strip, SLIDE, 5000, &current_color, (rgb_color) {27, 0, 0});
 
-         printf("Fast Outside\n");
-         TaskHandle_t xHandle = NULL;
+        printf("Fast Outside\n");
+        TaskHandle_t xHandle = NULL;
 
-         xTaskCreate(https_request_task, "https_get_task", 8192, ( void * ) 0, 5, &xHandle);
-         configASSERT( xHandle );
-     }else if(y >= 4.5){
-        if(end.center.y <= 2 ){
+        xTaskCreate(https_request_task, "https_get_task", 8192, (void *) 0, 5, &xHandle);
+        configASSERT(xHandle);
+    } else if (y >= 4.5) {
+        if (end.center.y <= 2) {
 
-            ouchat_animate(led_strip,SLIDE,5000, &current_color,(rgb_color){27,0,0});
+            ouchat_animate(led_strip, SLIDE, 5000, &current_color, (rgb_color) {27, 0, 0});
 
             printf("Outside\n");
             TaskHandle_t xHandle = NULL;
 
-            xTaskCreate(https_request_task, "https_get_task", 8192, ( void * ) 0, 5, &xHandle);
-            configASSERT( xHandle );
+            xTaskCreate(https_request_task, "https_get_task", 8192, (void *) 0, 5, &xHandle);
+            configASSERT(xHandle);
 
-        }else{
+        } else {
             printf("Fake Outside\n");
         }
-    }else if(y <= -4.5){
-        if(start.center.y <= 2 ){
+    } else if (y <= -4.5) {
+        if (start.center.y <= 2) {
 
-            ouchat_animate(led_strip,SLIDE,5000, &current_color,(rgb_color){8,27,0});
+            ouchat_animate(led_strip, SLIDE, 5000, &current_color, (rgb_color) {8, 27, 0});
 
             printf("Inside\n");
             TaskHandle_t xHandle = NULL;
 
-            xTaskCreate(https_request_task, "https_get_task", 8192, ( void * ) 1, 5, &xHandle);
-            configASSERT( xHandle );
-        }else{
-           printf("Fake Inside\n");
+            xTaskCreate(https_request_task, "https_get_task", 8192, (void *) 1, 5, &xHandle);
+            configASSERT(xHandle);
+        } else {
+            printf("Fake Inside\n");
         }
     }
 }
@@ -117,9 +122,9 @@ _Noreturn void app_main(void) {
 
     led_strip_clear(led_strip);
 
-    current_color = (rgb_color){0,0,0};
+    current_color = (rgb_color) {0, 0, 0};
 
-    ouchat_animate(led_strip,SLIDE,5000, &current_color,(rgb_color){20,20,20});
+    ouchat_animate(led_strip, SLIDE, 5000, &current_color, (rgb_color) {20, 20, 20});
 
     ouchat_init_provisioning();
 
@@ -138,6 +143,8 @@ _Noreturn void app_main(void) {
         //Free provisioning memory
         ouchat_deinit_provisioning();
 
+        ouchat_start_protocomm();
+
         esp_wifi_set_mode(WIFI_MODE_STA);
         esp_wifi_start();
     }
@@ -154,7 +161,7 @@ _Noreturn void app_main(void) {
     VL53L5CX_Configuration *configuration = malloc(sizeof *configuration);
     configuration->platform.port = I2C_NUM_1;
     configuration->platform.address = 0x52;
-
+/*
       //Wakeup the sensor
       status = vl53l5cx_is_alive(configuration, &isAlive);
       if (!isAlive || status) {
@@ -201,9 +208,9 @@ _Noreturn void app_main(void) {
     ESP_ERROR_CHECK(ret);
 
     int16_t context = 0;
-
+*/
     while (1) {
-
+/*
         memset(output,0,64);
         vl53l5cx_check_data_ready(configuration, &isReady);
         if (isReady) {
@@ -212,7 +219,7 @@ _Noreturn void app_main(void) {
                 ouchat_get_context(results.distance_mm, &context);
             }
             ouchat_handle_data(results.distance_mm,context,&ouchat_event_handler);
-        }
+        }*/
 
         WaitMs(&(configuration->platform), 5);
     }

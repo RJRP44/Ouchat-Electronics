@@ -3,25 +3,24 @@
 //
 
 #include <stdio.h>
-#include <stdbool.h>
 #include <wifi_provisioning/manager.h>
 #include <wifi_provisioning/scheme_ble.h>
-
+#include <stdbool.h>
 #include "ouchat_wifi_prov.h"
 #include "ouchat_prov_srp.h"
 #include "sdkconfig.h"
 
 //get the device name in the form : Ouchat-CATID
-static void get_device_name(char *service_name, size_t max){
+void get_device_name(char *service_name, size_t max){
     snprintf(service_name, max, "Ouchat-%s", CONFIG_OUCHAT_CAT);
 }
 
-static void ouchat_get_sec2_salt(const char **salt, uint16_t *salt_len) {
+void ouchat_get_sec2_salt(const char **salt, uint16_t *salt_len) {
     *salt = sec2_salt;
     *salt_len = sizeof(sec2_salt);
 }
 
-static void ouchat_get_sec2_verifier(const char **verifier, uint16_t *verifier_len) {
+void ouchat_get_sec2_verifier(const char **verifier, uint16_t *verifier_len) {
     *verifier = sec2_verifier;
     *verifier_len = sizeof(sec2_verifier);
 }
