@@ -9,26 +9,18 @@
 #include "ouchat_protocomm.h"
 #include "ouchat_wifi_prov.h"
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "ouchat_api.h"
 
-esp_err_t echo_req_handler(uint32_t session_id,
-                           const uint8_t *inbuf, ssize_t inlen,
-                           uint8_t **outbuf, ssize_t *outlen,
-                           void *priv_data) {
-    /* Session ID may be used for persistence */
-    printf("Session ID : %lu", session_id);
+esp_err_t join_req_handler(uint32_t session_id,const uint8_t *inbuf, ssize_t inlen,uint8_t **outbuf, ssize_t *outlen,void *priv_data) {
 
-    /* Echo back the received data */
-    *outlen = inlen;            /* Output data length updated */
-    *outbuf = malloc(inlen);    /* This will be deallocated outside */
-    memcpy(*outbuf, inbuf, inlen);
+    uint8_t *token = malloc(inlen);
+    memcpy(token, inbuf, inlen);
 
-    /* Private data that was passed at the time of endpoint creation */
-    uint32_t *priv = (uint32_t *) priv_data;
-    if (priv) {
-        printf("Private data : %lu", *priv);
-    }
-
-    ESP_LOGI("ouchat", "recived : %s", *outbuf);
+    TaskHandle_t xHandle = NULL;
+    xTaskCreate(ouchat_api_join, "ouchat_api_set", 8192, (void *) token, 5, &xHandle);
+    configASSERT(xHandle);
 
     return ESP_OK;
 }
@@ -63,6 +55,5 @@ void ouchat_start_protocomm() {
 
     protocomm_set_security(ptcm, "prov-session", &protocomm_security2, &sec2_params);
 
-    static uint32_t priv_data = 1234;
-    protocomm_add_endpoint(ptcm, "ouchat-config", echo_req_handler, (void *) &priv_data);
+    protocomm_add_endpoint(ptcm, "ouchat-config", join_req_handler, NULL);
 }

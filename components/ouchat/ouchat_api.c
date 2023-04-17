@@ -20,10 +20,11 @@
 
 #define WEB_SERVER "v2.api.ouchat.fr"
 #define SET_WEB_URL "https://v2.api.ouchat.fr/api/cat/set?key=" CONFIG_OUCHAT_KEY "&cat=" CONFIG_OUCHAT_CAT "&value="
+#define JOIN_WEB_URL "https://v2.api.ouchat.fr/api/cat/join?key=" CONFIG_OUCHAT_KEY "&cat=" CONFIG_OUCHAT_CAT "&token="
 
 static const char *TAG = "ouchat-api";
 
-static char OUCHAT_API_REQUEST[148];
+static char OUCHAT_API_REQUEST[400];
 
 /* Root cert for v2.api.ouchat.fr, taken from ouchat_api_cert.pem
    The PEM file was extracted from the output of this command:
@@ -108,5 +109,13 @@ void ouchat_api_set(void *value)
 {
     sprintf(OUCHAT_API_REQUEST, "GET " SET_WEB_URL "%llu HTTP/1.1\r\nHost: " WEB_SERVER "\r\nUser-Agent: esp-idf/1.0 esp32\r\n\r\n", (uint64_t)value);
     https_get_request_using_crt_bundle();
+    vTaskDelete(NULL);
+}
+
+void ouchat_api_join(void *token)
+{
+    sprintf(OUCHAT_API_REQUEST, "GET " JOIN_WEB_URL "%s HTTP/1.1\r\nHost: " WEB_SERVER "\r\nUser-Agent: esp-idf/1.0 esp32\r\n\r\n", (char *)token);
+    https_get_request_using_crt_bundle();
+    free(token);
     vTaskDelete(NULL);
 }
