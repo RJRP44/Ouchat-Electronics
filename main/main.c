@@ -61,7 +61,7 @@ static void ouchat_event_handler(double_t x, double_t y, area_t start, area_t en
         printf("Fast Outside\n");
         TaskHandle_t xHandle = NULL;
 
-        xTaskCreate(https_request_task, "https_get_task", 8192, (void *) 0, 5, &xHandle);
+        xTaskCreate(ouchat_api_set, "ouchat_api_set", 8192, (void *) 0, 5, &xHandle);
         configASSERT(xHandle);
     } else if (y >= 4.5) {
         if (end.center.y <= 2) {
@@ -71,7 +71,7 @@ static void ouchat_event_handler(double_t x, double_t y, area_t start, area_t en
             printf("Outside\n");
             TaskHandle_t xHandle = NULL;
 
-            xTaskCreate(https_request_task, "https_get_task", 8192, (void *) 0, 5, &xHandle);
+            xTaskCreate(ouchat_api_set, "ouchat_api_set", 8192, (void *) 0, 5, &xHandle);
             configASSERT(xHandle);
 
         } else {
@@ -85,7 +85,7 @@ static void ouchat_event_handler(double_t x, double_t y, area_t start, area_t en
             printf("Inside\n");
             TaskHandle_t xHandle = NULL;
 
-            xTaskCreate(https_request_task, "https_get_task", 8192, (void *) 1, 5, &xHandle);
+            xTaskCreate(ouchat_api_set, "ouchat_api_set", 8192, (void *) 1, 5, &xHandle);
             configASSERT(xHandle);
         } else {
             printf("Fake Inside\n");
@@ -161,7 +161,7 @@ _Noreturn void app_main(void) {
     VL53L5CX_Configuration *configuration = malloc(sizeof *configuration);
     configuration->platform.port = I2C_NUM_1;
     configuration->platform.address = 0x52;
-/*
+
       //Wakeup the sensor
       status = vl53l5cx_is_alive(configuration, &isAlive);
       if (!isAlive || status) {
@@ -208,9 +208,8 @@ _Noreturn void app_main(void) {
     ESP_ERROR_CHECK(ret);
 
     int16_t context = 0;
-*/
+
     while (1) {
-/*
         memset(output,0,64);
         vl53l5cx_check_data_ready(configuration, &isReady);
         if (isReady) {
@@ -219,7 +218,7 @@ _Noreturn void app_main(void) {
                 ouchat_get_context(results.distance_mm, &context);
             }
             ouchat_handle_data(results.distance_mm,context,&ouchat_event_handler);
-        }*/
+        }
 
         WaitMs(&(configuration->platform), 5);
     }

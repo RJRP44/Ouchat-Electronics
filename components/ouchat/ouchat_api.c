@@ -19,11 +19,11 @@
 #include "esp_crt_bundle.h"
 
 #define WEB_SERVER "v2.api.ouchat.fr"
-#define WEB_URL "https://v2.api.ouchat.fr/api/cat/set?key=" CONFIG_OUCHAT_KEY "&cat=" CONFIG_OUCHAT_CAT "&value="
+#define SET_WEB_URL "https://v2.api.ouchat.fr/api/cat/set?key=" CONFIG_OUCHAT_KEY "&cat=" CONFIG_OUCHAT_CAT "&value="
 
 static const char *TAG = "ouchat-api";
 
-static char OUCHAT_API_REQUEST[146];
+static char OUCHAT_API_REQUEST[148];
 
 /* Root cert for v2.api.ouchat.fr, taken from ouchat_api_cert.pem
    The PEM file was extracted from the output of this command:
@@ -35,8 +35,7 @@ extern const uint8_t server_root_cert_pem_start[] asm("_binary_ouchat_api_cert_p
 extern const uint8_t server_root_cert_pem_end[]   asm("_binary_ouchat_api_cert_pem_end");
 
 
-static void https_get_request(esp_tls_cfg_t cfg, const char *WEB_SERVER_URL, const char *REQUEST)
-{
+static void https_get_request(esp_tls_cfg_t cfg, const char *WEB_SERVER_URL, const char *REQUEST) {
     char buf[512];
     int ret, len;
 
@@ -61,7 +60,7 @@ static void https_get_request(esp_tls_cfg_t cfg, const char *WEB_SERVER_URL, con
         if (ret >= 0) {
             ESP_LOGI(TAG, "%d bytes written", ret);
             written_bytes += ret;
-        } else if (ret != ESP_TLS_ERR_SSL_WANT_READ  && ret != ESP_TLS_ERR_SSL_WANT_WRITE) {
+        } else if (ret != ESP_TLS_ERR_SSL_WANT_READ && ret != ESP_TLS_ERR_SSL_WANT_WRITE) {
             ESP_LOGE(TAG, "esp_tls_conn_write  returned: [0x%02X](%s)", ret, esp_err_to_name(ret));
             goto cleanup;
         }
@@ -71,9 +70,9 @@ static void https_get_request(esp_tls_cfg_t cfg, const char *WEB_SERVER_URL, con
     do {
         len = sizeof(buf) - 1;
         memset(buf, 0x00, sizeof(buf));
-        ret = esp_tls_conn_read(tls, (char *)buf, len);
+        ret = esp_tls_conn_read(tls, (char *) buf, len);
 
-        if (ret == ESP_TLS_ERR_SSL_WANT_WRITE  || ret == ESP_TLS_ERR_SSL_WANT_READ) {
+        if (ret == ESP_TLS_ERR_SSL_WANT_WRITE || ret == ESP_TLS_ERR_SSL_WANT_READ) {
             continue;
         } else if (ret < 0) {
             ESP_LOGE(TAG, "esp_tls_conn_read  returned [-0x%02X](%s)", -ret, esp_err_to_name(ret));
@@ -96,36 +95,18 @@ static void https_get_request(esp_tls_cfg_t cfg, const char *WEB_SERVER_URL, con
     esp_tls_conn_destroy(tls);
 }
 
-static void https_get_request_using_crt_bundle(void)
-{
+static void https_get_request_using_crt_bundle(void) {
     ESP_LOGI(TAG, "https_request using crt bundle");
     esp_tls_cfg_t cfg = {
             .crt_bundle_attach = esp_crt_bundle_attach,
     };
-    https_get_request(cfg, WEB_URL, OUCHAT_API_REQUEST);
+    https_get_request(cfg, SET_WEB_URL, OUCHAT_API_REQUEST);
 }
 
 
-void https_request_task(void * pvparameters)
+void ouchat_api_set(void *value)
 {
-    strcpy(OUCHAT_API_REQUEST,"GET " WEB_URL);
-    printf("https : %llu",(uint64_t)pvparameters);
-
-    if((uint64_t)pvparameters == 1){
-        strcat(OUCHAT_API_REQUEST, "1");
-    }else{
-        strcat(OUCHAT_API_REQUEST, "0");
-    }
-    strcat(OUCHAT_API_REQUEST," HTTP/1.1\r\n"
-                               "Host: " WEB_SERVER "\r\n"
-                               "User-Agent: esp-idf/1.0 esp32\r\n"
-                               "\r\n");
-    ESP_LOGI(TAG, "%s", OUCHAT_API_REQUEST );
-    ESP_LOGI(TAG, "Start https_request example");
-
+    sprintf(OUCHAT_API_REQUEST, "GET " SET_WEB_URL "%llu HTTP/1.1\r\nHost: " WEB_SERVER "\r\nUser-Agent: esp-idf/1.0 esp32\r\n\r\n", (uint64_t)value);
     https_get_request_using_crt_bundle();
-
-    ESP_LOGI(TAG, "Minimum free heap size: %lu bytes", esp_get_minimum_free_heap_size());
-    ESP_LOGI(TAG, "Finish https_request example");
     vTaskDelete(NULL);
 }
