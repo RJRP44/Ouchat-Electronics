@@ -7,6 +7,8 @@
 #ifndef OUCHAT_ELECTRONICS_OUCHAT_WIFI_PROV_H
 #define OUCHAT_ELECTRONICS_OUCHAT_WIFI_PROV_H
 
+extern char *ouchat_provisioner_token;
+
 void ouchat_init_provisioning();
 bool ouchat_is_provisioned();
 void ouchat_start_provisioning();

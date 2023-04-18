@@ -9,6 +9,15 @@
 #include "ouchat_wifi_prov.h"
 #include "ouchat_prov_srp.h"
 #include "sdkconfig.h"
+#include "esp_log.h"
+
+esp_err_t join_req_handler(uint32_t session_id,const uint8_t *inbuf, ssize_t inlen,uint8_t **outbuf, ssize_t *outlen,void *priv_data) {
+
+    ouchat_provisioner_token = malloc(inlen);
+    memcpy(ouchat_provisioner_token, inbuf, inlen);
+
+    return ESP_OK;
+};
 
 //get the device name in the form : Ouchat-CATID
 void get_device_name(char *service_name, size_t max){
@@ -62,7 +71,11 @@ void ouchat_start_provisioning(){
 
     wifi_prov_scheme_ble_set_service_uuid(service_uuid);
 
+    wifi_prov_mgr_endpoint_create("ouchat-config");
+
     wifi_prov_mgr_start_provisioning(security, (const void *) sec_params, ouchat_device_name, NULL);
+
+    wifi_prov_mgr_endpoint_register("ouchat-config", join_req_handler, NULL);
 }
 
 void ouchat_deinit_provisioning(){

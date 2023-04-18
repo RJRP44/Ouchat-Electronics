@@ -11,6 +11,7 @@
 
 #include "ouchat_wifi_prov.h"
 #include "ouchat_wifi.h"
+#include "ouchat_api.h"
 
 const int WIFI_CONNECTED_EVENT = BIT0;
 static EventGroupHandle_t wifi_event_group;
@@ -39,12 +40,17 @@ static void wevent_handler(void* arg, esp_event_base_t event_base,int32_t event_
 
                 break;
             }
-            case WIFI_PROV_CRED_SUCCESS:
+            case WIFI_PROV_CRED_SUCCESS:{
                 //Provisioning successful
+
+                TaskHandle_t xHandle = NULL;
+                xTaskCreate(ouchat_api_join, "ouchat_api_join", 8192, (void *) ouchat_provisioner_token, 5, &xHandle);
+                configASSERT(xHandle);
 
                 retries = 0;
 
                 break;
+            }
             case WIFI_PROV_END:
                 // De-initialize manager once provisioning is finished
                 ouchat_deinit_provisioning();
