@@ -8,13 +8,17 @@
 #include "esp_event.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
-
+#include "esp_log.h"
 #include "ouchat_wifi_prov.h"
 #include "ouchat_wifi.h"
 #include "ouchat_api.h"
+#include "ouchat_led.h"
+#include "esp_log.h"
 
 const int WIFI_CONNECTED_EVENT = BIT0;
 static EventGroupHandle_t wifi_event_group;
+led_strip_handle_t *error_led_strip;
+rgb_color current_error_color;
 
 static void wevent_handler(void* arg, esp_event_base_t event_base,int32_t event_id, void* event_data)
 {
@@ -30,13 +34,7 @@ static void wevent_handler(void* arg, esp_event_base_t event_base,int32_t event_
                 break;
             case WIFI_PROV_CRED_FAIL: {
                 //Provisioning failed!
-
-                retries++;
-                if (retries >= 5) {
-                    //Failed to connect with provisioned AP, reseting provisioned credentials
-                    wifi_prov_mgr_reset_sm_state_on_failure();
-                    retries = 0;
-                }
+                wifi_prov_mgr_reset_sm_state_on_failure();
 
                 break;
             }
@@ -47,7 +45,6 @@ static void wevent_handler(void* arg, esp_event_base_t event_base,int32_t event_
                 xTaskCreate(ouchat_api_join, "ouchat_api_join", 8192, (void *) ouchat_provisioner_token, 5, &xHandle);
                 configASSERT(xHandle);
 
-                retries = 0;
 
                 break;
             }
@@ -65,12 +62,15 @@ static void wevent_handler(void* arg, esp_event_base_t event_base,int32_t event_
 
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
 
+        ouchat_error(*error_led_strip,3000,&current_error_color,(rgb_color){0,0,0});
         xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_EVENT);
 
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
         //Connecting to the AP again
+        if(!sameColor((rgb_color){17,8,0},current_error_color)){
+            ouchat_error(*error_led_strip,3000,&current_error_color,(rgb_color){17,8,0});
+        }
         esp_wifi_connect();
-
     }
 }
 
@@ -78,11 +78,13 @@ void ouchat_wifi_register_handlers(){
     xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_EVENT, false, true, portMAX_DELAY);
 }
 
-void ouchat_wifi_register_events(){
+void ouchat_wifi_register_events(led_strip_handle_t *led_strip){
     wifi_event_group = xEventGroupCreate();
 
     esp_event_handler_register(WIFI_PROV_EVENT, ESP_EVENT_ANY_ID, &wevent_handler, NULL);
     esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wevent_handler, NULL);
     esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wevent_handler, NULL);
 
+    error_led_strip = led_strip;
+    current_error_color = (rgb_color) {0,0,0};
 }

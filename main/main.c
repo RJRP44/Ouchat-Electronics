@@ -35,6 +35,8 @@ static const char *TAG = "Ouchat-Main";
 
 led_strip_handle_t led_strip;
 rgb_color current_color;
+rgb_color current_error;
+
 
 static esp_err_t i2c_master_init(void) {
 
@@ -95,6 +97,8 @@ static void ouchat_event_handler(double_t x, double_t y, area_t start, area_t en
 
 void app_main(void) {
 
+    current_error = (rgb_color){0,0,0};
+
     esp_err_t nvs_ret = nvs_flash_init();
 
     if (nvs_ret == ESP_ERR_NVS_NO_FREE_PAGES || nvs_ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -107,7 +111,7 @@ void app_main(void) {
 
     esp_event_loop_create_default();
 
-    ouchat_wifi_register_events();
+    ouchat_wifi_register_events(&led_strip);
 
     esp_netif_create_default_wifi_sta();
 
@@ -166,6 +170,7 @@ void app_main(void) {
       status = vl53l5cx_is_alive(configuration, &isAlive);
       if (!isAlive || status) {
          ESP_LOGI(TAG,"VL53L5CX not detected at requested address");
+          ouchat_error(led_strip,3000,&current_error,(rgb_color){12,0,14});
           return;
       }
 

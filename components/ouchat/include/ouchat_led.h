@@ -39,5 +39,7 @@ enum animation_direction {
 };
 
 void ouchat_animate(led_strip_handle_t led_strip, enum animation_type animation, enum animation_direction direction, uint16_t delay, rgb_color* from, rgb_color to);
+void ouchat_error(led_strip_handle_t led_strip, uint16_t delay, rgb_color* from, rgb_color to);
+bool sameColor(rgb_color a, rgb_color b);
 
 #endif //OUCHAT_ELECTRONICS_OUCHAT_LED_H
