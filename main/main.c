@@ -56,7 +56,7 @@ static esp_err_t i2c_master_init(void) {
 static void ouchat_event_handler(double_t x, double_t y, area_t start, area_t end) {
     if (end.left_center.y == 0 && start.center.y >= 4.5) {
 
-        ouchat_animate(led_strip, SLIDE, 5000, &current_color, (rgb_color) {27, 0, 0});
+        ouchat_animate(led_strip, SLIDE, RIGHT, 5000, &current_color, (rgb_color) {7, 0, 0});
 
         printf("Fast Outside\n");
         TaskHandle_t xHandle = NULL;
@@ -66,7 +66,7 @@ static void ouchat_event_handler(double_t x, double_t y, area_t start, area_t en
     } else if (y >= 4.5) {
         if (end.center.y <= 2) {
 
-            ouchat_animate(led_strip, SLIDE, 5000, &current_color, (rgb_color) {27, 0, 0});
+            ouchat_animate(led_strip, SLIDE, RIGHT, 5000, &current_color, (rgb_color) {7, 0, 0});
 
             printf("Outside\n");
             TaskHandle_t xHandle = NULL;
@@ -80,7 +80,7 @@ static void ouchat_event_handler(double_t x, double_t y, area_t start, area_t en
     } else if (y <= -4.5) {
         if (start.center.y <= 2) {
 
-            ouchat_animate(led_strip, SLIDE, 5000, &current_color, (rgb_color) {8, 27, 0});
+            ouchat_animate(led_strip, SLIDE, LEFT, 5000, &current_color, (rgb_color) {2, 7, 0});
 
             printf("Inside\n");
             TaskHandle_t xHandle = NULL;
@@ -93,7 +93,7 @@ static void ouchat_event_handler(double_t x, double_t y, area_t start, area_t en
     }
 }
 
-_Noreturn void app_main(void) {
+void app_main(void) {
 
     esp_err_t nvs_ret = nvs_flash_init();
 
@@ -124,7 +124,7 @@ _Noreturn void app_main(void) {
 
     current_color = (rgb_color) {0, 0, 0};
 
-    ouchat_animate(led_strip, SLIDE, 5000, &current_color, (rgb_color) {20, 20, 20});
+    ouchat_animate(led_strip, SLIDE, RIGHT, 5000, &current_color, (rgb_color) {5, 5, 5});
 
     ouchat_init_provisioning();
 
@@ -134,7 +134,7 @@ _Noreturn void app_main(void) {
 
         ouchat_start_provisioning();
 
-        ouchat_animate(led_strip,SLIDE,5000, &current_color,(rgb_color){0,11,27});
+        ouchat_animate(led_strip,SLIDE, RIGHT,5000, &current_color,(rgb_color){0,3,7});
 
     } else {
 
@@ -166,13 +166,13 @@ _Noreturn void app_main(void) {
       status = vl53l5cx_is_alive(configuration, &isAlive);
       if (!isAlive || status) {
          ESP_LOGI(TAG,"VL53L5CX not detected at requested address");
-          while (1);
+          return;
       }
 
       status = vl53l5cx_init(configuration);
       if (status) {
           ESP_LOGI(TAG,"VL53L5CX ULD Loading failed");
-          while (1);
+          return;
       }
 
       printf("VL53L5CX ULD ready ! (Version : %s)\n", VL53L5CX_API_REVISION);
@@ -180,13 +180,13 @@ _Noreturn void app_main(void) {
       status = vl53l5cx_set_resolution(configuration, VL53L5CX_RESOLUTION_8X8);
       if (status) {
           printf("vl53l5cx_set_resolution failed, status %u\n", status);
-          while (1);
+          return;
       }
 
       status = vl53l5cx_set_ranging_frequency_hz(configuration, 15);
       if (status) {
           printf("vl53l5cx_set_ranging_frequency_hz failed, status %u\n", status);
-          while (1);
+          return;
       }
 
       uint8_t resolution;
@@ -216,8 +216,9 @@ _Noreturn void app_main(void) {
             vl53l5cx_get_ranging_data(configuration, &results);
             if(context == 0){
                 ouchat_get_context(results.distance_mm, &context);
+            }else{
+                ouchat_handle_data(results.distance_mm,context,&ouchat_event_handler);
             }
-            ouchat_handle_data(results.distance_mm,context,&ouchat_event_handler);
         }
 
         WaitMs(&(configuration->platform), 5);
