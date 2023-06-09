@@ -344,3 +344,13 @@ uint8_t ouchat_handle_data(
     memcpy(ouchat_last_areas, temp_areas, sizeof(temp_areas));
     return 0;
 }
+
+uint8_t ouchat_processing_wakeup(){
+    //Init all last areas
+    for (int i = 0; i < 16; ++i) {
+        ouchat_last_areas[i].bottom_right = 0;
+        ouchat_last_areas[i].top_left = POINT_TO_1D(16, 16);
+    }
+
+    return 0;
+}

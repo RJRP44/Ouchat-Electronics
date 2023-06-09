@@ -89,4 +89,6 @@ static uint8_t process_cutting(
         uint8_t sln
 );
 
+uint8_t ouchat_processing_wakeup();
+
 #endif //OUCHAT_PROCESSOR_H_
