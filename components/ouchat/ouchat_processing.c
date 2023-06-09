@@ -145,15 +145,17 @@ uint8_t ouchat_handle_data(
         area_t area = ouchat_last_areas[address];
 
         if(area.size > 0 && remaining_address[i] < 16){
-
+#if OUCHAT_API_VERBOSE
             printf("\n[%d]",address);
+#endif
             uint8_t found = 0;
 
             for (int j = 0; j < 64 && area.indexes[j] >> 4 != 0 && found == 0; ++j) {
 
                 uint8_t index = (area.indexes[j] >> 4) - 1;
+#if OUCHAT_API_VERBOSE
                 printf("%d,",index);
-
+#endif
                 if(negative_data[index] > 0 && area_address[index] == 16){
                     process_cutting(&area_address[0], negative_data, index, address);
 
@@ -174,8 +176,10 @@ uint8_t ouchat_handle_data(
     //Temporarily addressing all areas
     for (int i = 0; i < 64; ++i) {
         if (negative_data[i] > 0 && area_address[i] == 16) {
+#if OUCHAT_API_VERBOSE
             printf("changing on %d, on %d (%d;%d) a : %d", remaining_address[0], i, ABSCISSA_FROM_1D(i),
                    ORDINATE_FROM_1D(i), area_address[i]);
+#endif
             process_cutting(&area_address[0], negative_data, i, remaining_address[0]);
             memmove(remaining_address, remaining_address + 1, 15 * sizeof(uint8_t));
             remaining_address[15] = 16;
@@ -218,8 +222,9 @@ uint8_t ouchat_handle_data(
 
             ouchat_areas[address].indexes[area.size] = ((i + 1) << 4 ) + address;
             ouchat_areas[address].size ++;
+#if OUCHAT_API_VERBOSE
             printf("[%d]%d(%d),",address,((i + 1) << 4 ) + address,ouchat_areas[address].indexes[area.size]);
-
+#endif
 
             if (ABSCISSA_FROM_1D(i) < ABSCISSA_FROM_1D(ouchat_areas[address].top_left)) {
                 ouchat_areas[address].top_left = POINT_TO_1D(ABSCISSA_FROM_1D(i), ORDINATE_FROM_1D(ouchat_areas[address].top_left));
@@ -320,7 +325,7 @@ uint8_t ouchat_handle_data(
 
         }
     }
-#endif
+
     for (int j = 0; j < 64; ++j) {
         if (j % 8 == 0) {
             printf("\n");
@@ -334,7 +339,7 @@ uint8_t ouchat_handle_data(
     }
     printf("\n");
 
-
+#endif
     memcpy(last_sum_data, sum_data, sizeof(sum_data));
     memcpy(ouchat_last_areas, temp_areas, sizeof(temp_areas));
     return 0;
