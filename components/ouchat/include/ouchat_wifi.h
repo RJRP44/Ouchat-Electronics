@@ -9,7 +9,7 @@
 #define OUCHAT_ELECTRONICS_OUCHAT_WIFI_H
 
 void ouchat_wifi_register_handlers();
-void ouchat_wifi_register_events(led_strip_handle_t *led_strip);
-uint8_t ouchat_wifi_wakeup(led_strip_handle_t *led_strip);
+void ouchat_wifi_register_events();
+uint8_t ouchat_wifi_wakeup();
 
 #endif //OUCHAT_ELECTRONICS_OUCHAT_WIFI_H

@@ -25,10 +25,6 @@
 
 static const char *TAG = "Ouchat-Main";
 
-RTC_DATA_ATTR led_strip_handle_t led_strip;
-RTC_DATA_ATTR rgb_color current_color;
-RTC_DATA_ATTR rgb_color current_error;
-
 RTC_DATA_ATTR VL53L5CX_Configuration ouchat_sensor_configuration;
 RTC_DATA_ATTR int16_t ouchat_sensor_context = 0;
 
@@ -41,8 +37,7 @@ ouchat_motion_threshold_config threshold_config = {
 static void ouchat_event_handler(double_t x, double_t y, area_t start, area_t end) {
     if (end.left_center.y == 0 && start.center.y >= 4.5) {
 
-        //ouchat_animate(led_strip, SLIDE, RIGHT, 5000, &current_color, (rgb_color) {7, 0, 0});
-        ouchat_wifi_wakeup(&led_strip);
+        ouchat_wifi_wakeup();
 
         printf("Fast Outside\n");
         TaskHandle_t xHandle = NULL;
@@ -52,8 +47,7 @@ static void ouchat_event_handler(double_t x, double_t y, area_t start, area_t en
     } else if (y >= 4.5) {
         if (end.center.y <= 2) {
 
-            //ouchat_animate(led_strip, SLIDE, RIGHT, 5000, &current_color, (rgb_color) {7, 0, 0});
-            ouchat_wifi_wakeup(&led_strip);
+            ouchat_wifi_wakeup();
 
             printf("Outside\n");
             TaskHandle_t xHandle = NULL;
@@ -67,8 +61,7 @@ static void ouchat_event_handler(double_t x, double_t y, area_t start, area_t en
     } else if (y <= -4.5) {
         if (start.center.y <= 2) {
 
-            //ouchat_animate(led_strip, SLIDE, LEFT, 5000, &current_color, (rgb_color) {2, 7, 0});
-            ouchat_wifi_wakeup(&led_strip);
+            ouchat_wifi_wakeup();
 
             printf("Inside\n");
             TaskHandle_t xHandle = NULL;
@@ -102,8 +95,6 @@ void app_main(void) {
 
     if (wakeup_reason != ESP_SLEEP_WAKEUP_EXT0){
 
-        current_error = (rgb_color){0,0,0};
-
         esp_err_t nvs_ret = nvs_flash_init();
 
         if (nvs_ret == ESP_ERR_NVS_NO_FREE_PAGES || nvs_ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -116,24 +107,12 @@ void app_main(void) {
 
         esp_event_loop_create_default();
 
-        ouchat_wifi_register_events(&led_strip);
+        ouchat_wifi_register_events();
 
         esp_netif_create_default_wifi_sta();
 
         wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
         esp_wifi_init(&cfg);
-
-        //LED strip initialization
-        led_strip_config_t strip_config = DEFAULT_OUCHAT_LED_STRIP_CONFIG;
-        led_strip_rmt_config_t rmt_config = DEFAULT_OUCHAT_RMT_CONFIG;
-
-        led_strip_new_rmt_device(&strip_config, &rmt_config, &led_strip);
-
-        led_strip_clear(led_strip);
-
-        current_color = (rgb_color) {0, 0, 0};
-
-        ouchat_animate(led_strip, SLIDE, RIGHT, 5000, &current_color, (rgb_color) {5, 5, 5});
 
         ouchat_init_provisioning();
 
@@ -142,8 +121,6 @@ void app_main(void) {
             printf("Starting provisioning...");
 
             ouchat_start_provisioning();
-
-            ouchat_animate(led_strip,SLIDE, RIGHT,5000, &current_color,(rgb_color){0,3,7});
 
         } else {
 
@@ -253,7 +230,6 @@ void app_main(void) {
 
             if(empty_frames != 0 || status){
                 empty_frames = status == 0 ? 0 : empty_frames + status;
-                printf("frames : %i", empty_frames);
             }
 
         }
