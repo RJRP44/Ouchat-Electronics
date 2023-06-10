@@ -3,6 +3,7 @@
 //
 
 #include <wifi_provisioning/manager.h>
+#include <nvs_flash.h>
 #include "esp_system.h"
 #include "esp_wifi.h"
 #include "esp_event.h"
@@ -61,6 +62,7 @@ static void wevent_handler(void* arg, esp_event_base_t event_base,int32_t event_
         esp_wifi_connect();
 
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+        printf("connected");
 
         ouchat_error(*error_led_strip,3000,&current_error_color,(rgb_color){0,0,0});
         xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_EVENT);
@@ -87,4 +89,34 @@ void ouchat_wifi_register_events(led_strip_handle_t *led_strip){
 
     error_led_strip = led_strip;
     current_error_color = (rgb_color) {0,0,0};
+}
+
+uint8_t ouchat_wifi_wakeup(led_strip_handle_t *led_strip){
+
+    //Init nvs flash
+    esp_err_t nvs_ret = nvs_flash_init();
+
+    if (nvs_ret == ESP_ERR_NVS_NO_FREE_PAGES || nvs_ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+
+        nvs_flash_erase();
+        nvs_flash_init();
+    }
+
+    esp_netif_init();
+    esp_event_loop_create_default();
+
+    //Start the Wi-Fi
+    ouchat_wifi_register_events(led_strip);
+
+    esp_netif_create_default_wifi_sta();
+
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    esp_wifi_init(&cfg);
+
+    esp_wifi_set_mode(WIFI_MODE_STA);
+    esp_wifi_start();
+
+    ouchat_wifi_register_handlers();
+
+    return 0;
 }
