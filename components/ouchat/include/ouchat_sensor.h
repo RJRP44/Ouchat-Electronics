@@ -31,6 +31,6 @@ typedef struct {
 
 uint8_t ouchat_init_i2c(i2c_port_t port, i2c_config_t config);
 uint8_t ouchat_init_sensor(ouchat_sensor_config config);
-uint8_t ouchat_lp_sensor(ouchat_sensor_config config, ouchat_motion_threshold_config motion_threshold_config);
+uint8_t ouchat_lp_sensor(ouchat_sensor_config config, ouchat_motion_threshold_config motion_threshold_config, int16_t *sensor_background);
 
 #endif //OUCHAT_ELECTRONICS_OUCHAT_SENSOR_H

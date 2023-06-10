@@ -3,7 +3,6 @@
 //
 
 #include "ouchat_sensor.h"
-#include "vl53l5cx_plugin_motion_indicator.h"
 #include "vl53l5cx_plugin_detection_thresholds.h"
 
 uint8_t ouchat_init_i2c(i2c_port_t port, i2c_config_t config){
@@ -68,26 +67,9 @@ uint8_t ouchat_init_sensor(ouchat_sensor_config config){
     return 0;
 }
 
-uint8_t ouchat_lp_sensor(ouchat_sensor_config config, ouchat_motion_threshold_config motion_threshold_config){
+uint8_t ouchat_lp_sensor(ouchat_sensor_config config, ouchat_motion_threshold_config motion_threshold_config, int16_t *sensor_background){
 
-    VL53L5CX_Motion_Configuration motion_config;
     uint8_t status = 0;
-
-    status = vl53l5cx_motion_indicator_init(config.sensor_config, &motion_config, config.resolution);
-    if(status)
-    {
-        printf("Motion indicator init failed with status : %u\n", status);
-        return 1;
-    }
-    printf("Motion indicator ready !");
-
-    status = vl53l5cx_motion_indicator_set_distance_motion(config.sensor_config, &motion_config, motion_threshold_config.distance_min, motion_threshold_config.distance_max);
-    if(status)
-    {
-        printf("Motion indicator set distance motion failed with status : %u\n", status);
-        return 1;
-    }
-    printf("Motion indicator set distance motion min : ");
 
     //ouchat_init_sensor(config);
 
@@ -104,13 +86,14 @@ uint8_t ouchat_lp_sensor(ouchat_sensor_config config, ouchat_motion_threshold_co
     //Add thresholds for all zones
     for(int i = 0; i < 64; i++){
         motion_thresholds[i].zone_num = i;
-        motion_thresholds[i].measurement = VL53L5CX_MOTION_INDICATOR;
-        motion_thresholds[i].type = VL53L5CX_GREATER_THAN_MAX_CHECKER;
+        motion_thresholds[i].measurement = VL53L5CX_DISTANCE_MM;
+        motion_thresholds[i].type = VL53L5CX_LESS_THAN_EQUAL_MIN_CHECKER;
         motion_thresholds[i].mathematic_operation = VL53L5CX_OPERATION_NONE;
 
         /* The value 44 is given as example. All motion above 44 will be considered as a movement */
-        motion_thresholds[i].param_low_thresh = 44;
-        motion_thresholds[i].param_high_thresh = 44;
+        motion_thresholds[i].param_high_thresh = 0;
+        motion_thresholds[i].param_low_thresh = *(sensor_background + i) - 130;
+        printf("%i\n",*(sensor_background + i));
     }
 
     //Define the last threshold
