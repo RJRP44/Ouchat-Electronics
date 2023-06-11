@@ -117,4 +117,15 @@ int area_address_compar (const void* p1, const void* p2);
  */
 int area_points_compar(const void* p1, const void* p2);
 
+/**
+ * @brief This function is used to calculate the distance
+ * between 2 point for qsort
+ * @param (const void*) p1 : 1st point to compare
+ * @param (const void*) p2 : 2nd point to compare
+ * @return (int) <0 : if p1 is farther than p2,
+ *                0 : if p1 equals p2,
+ *               >0 : if p1 is closest than p2.
+ */
+int point_distance_compr(const void *p1, const void *p2);
+
 #endif //OUCHAT_ELECTRONICS_OUCHAT_UTILS_H

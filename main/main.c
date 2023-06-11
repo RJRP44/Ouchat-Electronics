@@ -27,6 +27,7 @@ static const char *TAG = "Ouchat-Main";
 
 RTC_DATA_ATTR VL53L5CX_Configuration ouchat_sensor_configuration;
 RTC_DATA_ATTR int16_t ouchat_sensor_context = 0;
+RTC_DATA_ATTR int16_t ouchat_sensor_background[64];
 
 ouchat_motion_threshold_config threshold_config = {
         .distance_min = 400,
@@ -169,6 +170,8 @@ void app_main(void) {
         //Process it the get the approximate distance
         ouchat_get_context(results.distance_mm, &ouchat_sensor_context);
 
+        memcpy(ouchat_sensor_background, results.distance_mm, sizeof results.distance_mm);
+
         printf("context distance : %i mm \n", ouchat_sensor_context);
 
         for (int j = 0; j < 8; ++j) {
@@ -189,7 +192,7 @@ void app_main(void) {
                 .integration_time = 10,
         };
 
-        ouchat_lp_sensor(sensor_config, threshold_config);
+        ouchat_lp_sensor(sensor_config, threshold_config, &ouchat_sensor_background[0]);
         vl53l5cx_start_ranging(&ouchat_sensor_configuration);
 
         esp_deep_sleep_disable_rom_logging();
@@ -198,6 +201,45 @@ void app_main(void) {
         esp_deep_sleep_start();
         return;
     }
+
+    uint8_t is_ready = 0;
+    uint8_t status;
+
+    //Wait for the sensor to restart ranging
+    while (!is_ready){
+        WaitMs(&(ouchat_sensor_configuration.platform), 5);
+        vl53l5cx_check_data_ready(&ouchat_sensor_configuration, &is_ready);
+    }
+
+    ouchat_processing_wakeup();
+
+    //Get the raw data
+    VL53L5CX_ResultsData results;
+    vl53l5cx_get_ranging_data(&ouchat_sensor_configuration, &results);
+
+    status = ouchat_handle_data(results.distance_mm,ouchat_sensor_context,&ouchat_event_handler);
+
+    area_t wakeup_frame[16];
+
+    memcpy(wakeup_frame, ouchat_areas, sizeof(ouchat_areas));
+
+    while (!is_ready){
+        WaitMs(&(ouchat_sensor_configuration.platform), 5);
+        vl53l5cx_check_data_ready(&ouchat_sensor_configuration, &is_ready);
+    }
+
+    vl53l5cx_get_ranging_data(&ouchat_sensor_configuration, &results);
+
+    status = ouchat_handle_data(results.distance_mm,ouchat_sensor_context,&ouchat_event_handler);
+
+
+
+    for (int i = 0; i < 16; ++i) {
+        if(wakeup_frame[i].top_left != C_TO_1D(16, 16) && ouchat_areas[i].top_left != C_TO_1D(16,16)){
+            ouchat_process_trajectory_points(wakeup_frame[i],ouchat_areas[i], i);
+        }
+    }
+
 
     ouchat_sensor_config sensor_config = (ouchat_sensor_config){
             .sensor_config = &ouchat_sensor_configuration,
@@ -215,11 +257,7 @@ void app_main(void) {
     vl53l5cx_start_ranging(&ouchat_sensor_configuration);
 
     uint16_t empty_frames = 0;
-    uint8_t is_ready = 0;
-    uint8_t status;
-    VL53L5CX_ResultsData results;
 
-    ouchat_processing_wakeup();
     while(empty_frames < 30)
     {
         status = vl53l5cx_check_data_ready(&ouchat_sensor_configuration, &is_ready);
@@ -241,7 +279,7 @@ void app_main(void) {
 
     vl53l5cx_stop_ranging(&ouchat_sensor_configuration);
 
-    ouchat_lp_sensor(sensor_config, threshold_config);
+    ouchat_lp_sensor(sensor_config, threshold_config,&ouchat_sensor_background[0]);
     vl53l5cx_start_ranging(&ouchat_sensor_configuration);
 
     esp_deep_sleep_disable_rom_logging();

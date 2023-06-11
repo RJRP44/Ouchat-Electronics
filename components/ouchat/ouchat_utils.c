@@ -89,3 +89,16 @@ int area_points_compar(const void *p1, const void *p2) {
     }
     return 0;
 }
+
+int point_distance_compr(const void *p1, const void *p2){
+    int8_t p1_value = *(int8_t *) p1;
+    int8_t p2_value = *(int8_t *) p2;
+
+    if (p1_value == -1 || p2_value == -1){
+        return -1;
+    }
+
+    double_t distance = point_distance(p1_value, p2_value);
+
+    return (int) distance;
+}

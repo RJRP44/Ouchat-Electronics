@@ -14,6 +14,8 @@ uint16_t last_sum_data[3][16];
 uint8_t last_address = 0x01;
 area_t start_cats[17];
 
+static int8_t trajectories[16][64];
+
 uint8_t ouchat_negative_data(
         const double_t trigger_value,
         const double_t input_data[64],
@@ -160,6 +162,22 @@ uint8_t ouchat_handle_data(
                     process_cutting(&area_address[0], negative_data, index, address);
 
                     found = 1;
+                }
+            }
+
+            if(found == 0 && trajectories[address][0] != -1){
+                for (int j = 0; j < 64 && trajectories[address][j] != -1 && found == 0; ++j) {
+
+                    int8_t index = trajectories[address][j];
+#if OUCHAT_API_VERBOSE
+                    printf("/%d/,",index);
+#endif
+
+                    if(negative_data[index] > 0 && area_address[index] == 16){
+                        process_cutting(&area_address[0], negative_data, index, address);
+
+                        found = 1;
+                    }
                 }
             }
 
@@ -342,6 +360,7 @@ uint8_t ouchat_handle_data(
 #endif
     memcpy(last_sum_data, sum_data, sizeof(sum_data));
     memcpy(ouchat_last_areas, temp_areas, sizeof(temp_areas));
+    memset(trajectories, -1, sizeof(trajectories));
     return 0;
 }
 
@@ -352,5 +371,40 @@ uint8_t ouchat_processing_wakeup(){
         ouchat_last_areas[i].top_left = POINT_TO_1D(16, 16);
     }
 
+    return 0;
+}
+
+uint8_t ouchat_process_trajectory_points(area_t area1, area_t area2, uint8_t address){
+
+    int8_t temp_trajectory[64];
+    memset(temp_trajectory, -1, sizeof(temp_trajectory));
+
+    int8_t *temp_point = &temp_trajectory[0];
+
+
+    double_t b = -(area2.center.x - area1.center.x);
+    double_t a = area2.center.y - area1.center.y;
+    double_t c = -(a*area1.center.x + b*area1.center.y);
+
+    for (int8_t i = 0; i < 64; ++i) {
+        uint8_t x = ABSCISSA_FROM_1D(i);
+        uint8_t y = ORDINATE_FROM_1D(i);
+
+        long double distance = fabsl(a * x + b * y + c) / sqrtl(powl(a,2) + powl(b,2));
+
+        if(distance <= 0.5){
+            *temp_point = i;
+            temp_point++;
+        }
+    }
+
+    qsort(temp_trajectory, temp_point-temp_trajectory, sizeof(int8_t), point_distance_compr);
+
+    memcpy(trajectories[address], temp_trajectory, sizeof(temp_trajectory));
+    printf("T%i[",address);
+    for (int i = 0; i < 64; ++i) {
+        printf("%i,",trajectories[address][i]);
+    }
+    printf("]\n");
     return 0;
 }
