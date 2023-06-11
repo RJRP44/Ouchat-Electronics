@@ -93,7 +93,6 @@ uint8_t ouchat_lp_sensor(ouchat_sensor_config config, ouchat_motion_threshold_co
         /* The value 44 is given as example. All motion above 44 will be considered as a movement */
         motion_thresholds[i].param_high_thresh = 0;
         motion_thresholds[i].param_low_thresh = *(sensor_background + i) - 130;
-        printf("%i\n",*(sensor_background + i));
     }
 
     //Define the last threshold
