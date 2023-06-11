@@ -3,6 +3,7 @@
 //
 
 #include <wifi_provisioning/manager.h>
+#include <nvs_flash.h>
 #include "esp_system.h"
 #include "esp_wifi.h"
 #include "esp_event.h"
@@ -17,8 +18,6 @@
 
 const int WIFI_CONNECTED_EVENT = BIT0;
 static EventGroupHandle_t wifi_event_group;
-led_strip_handle_t *error_led_strip;
-rgb_color current_error_color;
 
 static void wevent_handler(void* arg, esp_event_base_t event_base,int32_t event_id, void* event_data)
 {
@@ -62,14 +61,10 @@ static void wevent_handler(void* arg, esp_event_base_t event_base,int32_t event_
 
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
 
-        ouchat_error(*error_led_strip,3000,&current_error_color,(rgb_color){0,0,0});
         xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_EVENT);
 
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
         //Connecting to the AP again
-        if(!sameColor((rgb_color){17,8,0},current_error_color)){
-            ouchat_error(*error_led_strip,3000,&current_error_color,(rgb_color){17,8,0});
-        }
         esp_wifi_connect();
     }
 }
@@ -78,13 +73,40 @@ void ouchat_wifi_register_handlers(){
     xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_EVENT, false, true, portMAX_DELAY);
 }
 
-void ouchat_wifi_register_events(led_strip_handle_t *led_strip){
+void ouchat_wifi_register_events(){
     wifi_event_group = xEventGroupCreate();
 
     esp_event_handler_register(WIFI_PROV_EVENT, ESP_EVENT_ANY_ID, &wevent_handler, NULL);
     esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wevent_handler, NULL);
     esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wevent_handler, NULL);
+}
 
-    error_led_strip = led_strip;
-    current_error_color = (rgb_color) {0,0,0};
+uint8_t ouchat_wifi_wakeup(){
+
+    //Init nvs flash
+    esp_err_t nvs_ret = nvs_flash_init();
+
+    if (nvs_ret == ESP_ERR_NVS_NO_FREE_PAGES || nvs_ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+
+        nvs_flash_erase();
+        nvs_flash_init();
+    }
+
+    esp_netif_init();
+    esp_event_loop_create_default();
+
+    //Start the Wi-Fi
+    ouchat_wifi_register_events();
+
+    esp_netif_create_default_wifi_sta();
+
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    esp_wifi_init(&cfg);
+
+    esp_wifi_set_mode(WIFI_MODE_STA);
+    esp_wifi_start();
+
+    ouchat_wifi_register_handlers();
+
+    return 0;
 }

@@ -23,6 +23,11 @@
 
 #define PI 3.14159265
 
+typedef struct {
+    double_t m;
+    double_t p;
+} cat_trajectory_t;
+
 /**
  * @brief return the smallest value
  */
@@ -88,5 +93,9 @@ static uint8_t process_cutting(
         uint8_t i,
         uint8_t sln
 );
+
+uint8_t ouchat_processing_wakeup();
+
+uint8_t ouchat_process_trajectory_points(area_t area1, area_t area2, uint8_t address);
 
 #endif //OUCHAT_PROCESSOR_H_
