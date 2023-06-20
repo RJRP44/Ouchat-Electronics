@@ -401,10 +401,12 @@ uint8_t ouchat_process_trajectory_points(area_t area1, area_t area2, uint8_t add
     qsort(temp_trajectory, temp_point-temp_trajectory, sizeof(int8_t), point_distance_compr);
 
     memcpy(trajectories[address], temp_trajectory, sizeof(temp_trajectory));
+#if OUCHAT_API_VERBOSE
     printf("T%i[",address);
     for (int i = 0; i < 64; ++i) {
         printf("%i,",trajectories[address][i]);
     }
     printf("]\n");
+#endif
     return 0;
 }

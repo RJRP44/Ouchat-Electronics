@@ -15,7 +15,7 @@
 #define Y_FROM_1D(i) i % 8
 #define C_TO_1D(x, y) 8*(x)+(y)
 
-#define OUCHAT_API_VERBOSE 1u
+#define OUCHAT_API_VERBOSE 0u
 
 #define TOTAL_SUM 0
 #define ABSCISSA_SUM 1
