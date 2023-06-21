@@ -15,6 +15,8 @@
 #include "ouchat_api.h"
 #include "ouchat_led.h"
 #include "esp_log.h"
+#include "ouchat_logger.h"
+#include "esp_netif.h"
 
 const int WIFI_CONNECTED_EVENT = BIT0;
 static EventGroupHandle_t wifi_event_group;
@@ -69,7 +71,7 @@ static void wevent_handler(void* arg, esp_event_base_t event_base,int32_t event_
     }
 }
 
-void ouchat_wifi_register_handlers(){
+void ouchat_wait_wifi(){
     xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_EVENT, false, true, portMAX_DELAY);
 }
 
@@ -81,7 +83,7 @@ void ouchat_wifi_register_events(){
     esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wevent_handler, NULL);
 }
 
-uint8_t ouchat_wifi_wakeup(){
+void ouchat_wifi_wakeup(void *value){
 
     //Init nvs flash
     esp_err_t nvs_ret = nvs_flash_init();
@@ -106,7 +108,7 @@ uint8_t ouchat_wifi_wakeup(){
     esp_wifi_set_mode(WIFI_MODE_STA);
     esp_wifi_start();
 
-    ouchat_wifi_register_handlers();
+    ouchat_wait_wifi();
 
-    return 0;
+    esp_netif_init();
 }

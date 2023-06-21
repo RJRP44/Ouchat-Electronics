@@ -8,8 +8,8 @@
 #ifndef OUCHAT_ELECTRONICS_OUCHAT_WIFI_H
 #define OUCHAT_ELECTRONICS_OUCHAT_WIFI_H
 
-void ouchat_wifi_register_handlers();
+void ouchat_wait_wifi();
 void ouchat_wifi_register_events();
-uint8_t ouchat_wifi_wakeup();
+void ouchat_wifi_wakeup(void *value);
 
 #endif //OUCHAT_ELECTRONICS_OUCHAT_WIFI_H
