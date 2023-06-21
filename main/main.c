@@ -11,6 +11,7 @@
 #include <string.h>
 #include <cJSON.h>
 #include <esp_sleep.h>
+#include <mbedtls/base64.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_wifi.h"
@@ -18,10 +19,9 @@
 #include "nvs_flash.h"
 #include "ouchat_wifi_prov.h"
 #include "ouchat_wifi.h"
-#include "led_strip.h"
 #include "ouchat_led.h"
-#include "ouchat_protocomm.h"
 #include "ouchat_sensor.h"
+#include "ouchat_logger.h"
 
 static const char *TAG = "Ouchat-Main";
 
@@ -38,8 +38,6 @@ ouchat_motion_threshold_config threshold_config = {
 static void ouchat_event_handler(double_t x, double_t y, area_t start, area_t end) {
     if (end.left_center.y == 0 && start.center.y >= 4.5) {
 
-        ouchat_wifi_wakeup();
-
         printf("Fast Outside\n");
         TaskHandle_t xHandle = NULL;
 
@@ -47,8 +45,6 @@ static void ouchat_event_handler(double_t x, double_t y, area_t start, area_t en
         configASSERT(xHandle);
     } else if (y >= 4.5) {
         if (end.center.y <= 2) {
-
-            ouchat_wifi_wakeup();
 
             printf("Outside\n");
             TaskHandle_t xHandle = NULL;
@@ -61,8 +57,6 @@ static void ouchat_event_handler(double_t x, double_t y, area_t start, area_t en
         }
     } else if (y <= -4.5) {
         if (start.center.y <= 2) {
-
-            ouchat_wifi_wakeup();
 
             printf("Inside\n");
             TaskHandle_t xHandle = NULL;
@@ -108,13 +102,6 @@ void app_main(void) {
 
         esp_event_loop_create_default();
 
-        ouchat_wifi_register_events();
-
-        esp_netif_create_default_wifi_sta();
-
-        wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-        esp_wifi_init(&cfg);
-
         ouchat_init_provisioning();
 
         if(!ouchat_is_provisioned()){
@@ -131,12 +118,7 @@ void app_main(void) {
             ouchat_deinit_provisioning();
 
             //ouchat_start_protocomm();
-
-            esp_wifi_set_mode(WIFI_MODE_STA);
-            esp_wifi_start();
         }
-
-        ouchat_wifi_register_handlers();
 
         //Power on sensor and init
         ouchat_sensor_configuration.platform.address = VL53L5CX_DEFAULT_I2C_ADDRESS;
@@ -202,6 +184,16 @@ void app_main(void) {
         return;
     }
 
+#if CONFIG_OUCHAT_DEBUG_LOGGER
+
+    ouchat_logger_init();
+
+    TaskHandle_t xHandle = NULL;
+
+    xTaskCreatePinnedToCore(ouchat_logger, "ouchat_log", 16384,&ouchat_sensor_context, 5, &xHandle, 1);
+    configASSERT(xHandle);
+
+#endif
     uint8_t is_ready = 0;
     uint8_t status;
 
@@ -261,20 +253,27 @@ void app_main(void) {
     while(empty_frames < 30)
     {
         status = vl53l5cx_check_data_ready(&ouchat_sensor_configuration, &is_ready);
+
         if(is_ready)
         {
             vl53l5cx_get_ranging_data(&ouchat_sensor_configuration, &results);
             status = ouchat_handle_data(results.distance_mm,ouchat_sensor_context,&ouchat_event_handler);
 
+#if CONFIG_OUCHAT_DEBUG_LOGGER
+
+            size_t outlen;
+            unsigned char output[190];
+
+            mbedtls_base64_encode(output, 190, &outlen, (const unsigned char *) results.distance_mm, sizeof (results.distance_mm));
+
+            ouchat_log(output);
+
+#endif
+
             if(empty_frames != 0 || status){
                 empty_frames = status == 0 ? 0 : empty_frames + status;
             }
-
         }
-
-        /* Wait a few ms to avoid too high polling (function in platform
-         * file, not in API) */
-        WaitMs(&(ouchat_sensor_configuration.platform), 5);
     }
 
     vl53l5cx_stop_ranging(&ouchat_sensor_configuration);
@@ -282,8 +281,12 @@ void app_main(void) {
     ouchat_lp_sensor(sensor_config, threshold_config,&ouchat_sensor_background[0]);
     vl53l5cx_start_ranging(&ouchat_sensor_configuration);
 
+#if CONFIG_OUCHAT_DEBUG_LOGGER
+    ouchat_deep_sleep_logger();
+#else
     esp_deep_sleep_disable_rom_logging();
 
     esp_sleep_enable_ext0_wakeup(GPIO_NUM_17,0);
     esp_deep_sleep_start();
+#endif
 }

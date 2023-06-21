@@ -12,4 +12,19 @@ menu "Ouchat Configuration"
         help
             The ID of your cat.
 
+    config OUCHAT_DEBUG_LOGGER
+        bool "Ouchat Logger"
+        help
+            Used to debug Ouchat
+
+    menu "Debug Logger"
+        depends on OUCHAT_DEBUG_LOGGER
+
+        config OUCHAT_DEBUG_LOGGER_IP
+            string "Logger Server IP"
+            default "0.0.0.0"
+            help
+                The IP of the logging server
+
+    endmenu
 endmenu
