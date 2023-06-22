@@ -111,4 +111,6 @@ void ouchat_wifi_wakeup(void *value){
     ouchat_wait_wifi();
 
     esp_netif_init();
+
+    ouchat_api_status = 0;
 }

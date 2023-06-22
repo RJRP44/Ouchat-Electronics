@@ -322,28 +322,29 @@ uint8_t ouchat_handle_data(
             printf("]\n");
         }
     }
-
+#endif
 
     for (int i = 0; i < 16; ++i) {
         if (ouchat_last_areas[i].top_left == C_TO_1D(16, 16) && temp_areas[i].top_left != C_TO_1D(16, 16)) {
             start_cats[i] = temp_areas[i];
-
+#if OUCHAT_API_VERBOSE
             printf("Start of %d\n", i);
-
+#endif
         }
         if (ouchat_last_areas[i].top_left != C_TO_1D(16, 16) && temp_areas[i].top_left == C_TO_1D(16, 16)) {
-
+#if OUCHAT_API_VERBOSE
             printf("End of %d\n", i);
             printf("Selection %d moved x:%f y:%f\n", i,
                    start_cats[i].center.x - ouchat_last_areas[i].center.x,
                    start_cats[i].center.y - ouchat_last_areas[i].center.y);
+#endif
             (*p_callback)(start_cats[i].center.x - ouchat_last_areas[i].center.x,
                           start_cats[i].center.y - ouchat_last_areas[i].center.y,
                           start_cats[i], ouchat_last_areas[i]);
 
         }
     }
-
+#if OUCHAT_API_VERBOSE
     for (int j = 0; j < 64; ++j) {
         if (j % 8 == 0) {
             printf("\n");

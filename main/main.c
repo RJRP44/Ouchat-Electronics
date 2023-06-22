@@ -36,20 +36,34 @@ ouchat_motion_threshold_config threshold_config = {
 };
 
 static void ouchat_event_handler(double_t x, double_t y, area_t start, area_t end) {
+
+    if (ouchat_api_status == WAITING_WIFI){
+        ESP_LOGI(TAG,"Waiting Wi-Fi");
+    }
+
+    while (ouchat_api_status == WAITING_WIFI){
+        WaitMs(&(ouchat_sensor_configuration.platform), 20);
+    }
+
     if (end.left_center.y == 0 && start.center.y >= 4.5) {
 
         printf("Fast Outside\n");
+
+        ouchat_api_status = 1;
+
         TaskHandle_t xHandle = NULL;
 
-        xTaskCreate(ouchat_api_set, "ouchat_api_set", 8192, (void *) 0, 5, &xHandle);
+        xTaskCreate(ouchat_api_set, "ouchat_api_set", 8192, (void *) 0, 4, &xHandle);
         configASSERT(xHandle);
     } else if (y >= 4.5) {
         if (end.center.y <= 2) {
 
             printf("Outside\n");
+
+            ouchat_api_status = 1;
             TaskHandle_t xHandle = NULL;
 
-            xTaskCreate(ouchat_api_set, "ouchat_api_set", 8192, (void *) 0, 5, &xHandle);
+            xTaskCreate(ouchat_api_set, "ouchat_api_set", 8192, (void *) 0, 4, &xHandle);
             configASSERT(xHandle);
 
         } else {
@@ -59,9 +73,11 @@ static void ouchat_event_handler(double_t x, double_t y, area_t start, area_t en
         if (start.center.y <= 2) {
 
             printf("Inside\n");
+
+            ouchat_api_status = 1;
             TaskHandle_t xHandle = NULL;
 
-            xTaskCreate(ouchat_api_set, "ouchat_api_set", 8192, (void *) 1, 5, &xHandle);
+            xTaskCreate(ouchat_api_set, "ouchat_api_set", 8192, (void *) 1, 4, &xHandle);
             configASSERT(xHandle);
         } else {
             printf("Fake Inside\n");
@@ -70,6 +86,8 @@ static void ouchat_event_handler(double_t x, double_t y, area_t start, area_t en
 }
 
 void app_main(void) {
+
+    ouchat_api_status = WAITING_WIFI;
 
     //Get the wakeup reason
     esp_sleep_wakeup_cause_t wakeup_reason;
@@ -184,16 +202,6 @@ void app_main(void) {
         return;
     }
 
-#if CONFIG_OUCHAT_DEBUG_LOGGER
-
-    ouchat_logger_init();
-
-    TaskHandle_t xHandle = NULL;
-
-    xTaskCreatePinnedToCore(ouchat_logger, "ouchat_log", 16384,&ouchat_sensor_context, 5, &xHandle, 1);
-    configASSERT(xHandle);
-
-#endif
     uint8_t is_ready = 0;
     uint8_t status;
 
@@ -243,6 +251,17 @@ void app_main(void) {
 
     vl53l5cx_stop_ranging(&ouchat_sensor_configuration);
 
+#if CONFIG_OUCHAT_DEBUG_LOGGER
+
+    ouchat_logger_init();
+
+    TaskHandle_t xHandle = NULL;
+
+    xTaskCreatePinnedToCore(ouchat_logger, "ouchat_log", 16384,&ouchat_sensor_context, 5, &xHandle, 1);
+    configASSERT(xHandle);
+
+#endif
+
     vl53l5cx_set_ranging_mode(&ouchat_sensor_configuration, VL53L5CX_RANGING_MODE_CONTINUOUS);
     vl53l5cx_set_ranging_frequency_hz(&ouchat_sensor_configuration, 15);
 
@@ -280,6 +299,11 @@ void app_main(void) {
 
     ouchat_lp_sensor(sensor_config, threshold_config,&ouchat_sensor_background[0]);
     vl53l5cx_start_ranging(&ouchat_sensor_configuration);
+
+    //Wait fot the api request to be compete
+    while (ouchat_api_status == REQUESTING_API){
+        WaitMs(&(ouchat_sensor_configuration.platform), 20);
+    }
 
 #if CONFIG_OUCHAT_DEBUG_LOGGER
     ouchat_deep_sleep_logger();

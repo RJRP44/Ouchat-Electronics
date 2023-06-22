@@ -35,6 +35,7 @@ static char OUCHAT_API_REQUEST[400];
 extern const uint8_t server_root_cert_pem_start[] asm("_binary_ouchat_api_cert_pem_start");
 extern const uint8_t server_root_cert_pem_end[]   asm("_binary_ouchat_api_cert_pem_end");
 
+uint8_t ouchat_api_status;
 
 static void https_get_request(esp_tls_cfg_t cfg, const char *WEB_SERVER_URL, const char *REQUEST) {
     char buf[512];
