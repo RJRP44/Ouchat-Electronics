@@ -37,19 +37,11 @@ ouchat_motion_threshold_config threshold_config = {
 
 static void ouchat_event_handler(double_t x, double_t y, area_t start, area_t end) {
 
-    if (ouchat_api_status == WAITING_WIFI){
-        ESP_LOGI(TAG,"Waiting Wi-Fi");
-    }
-
-    while (ouchat_api_status == WAITING_WIFI){
-        WaitMs(&(ouchat_sensor_configuration.platform), 20);
-    }
-
     if (end.left_center.y == 0 && start.center.y >= 4.5) {
 
         printf("Fast Outside\n");
 
-        ouchat_api_status = 1;
+        ouchat_api_status = REQUESTING_API;
 
         TaskHandle_t xHandle = NULL;
 
@@ -60,7 +52,7 @@ static void ouchat_event_handler(double_t x, double_t y, area_t start, area_t en
 
             printf("Outside\n");
 
-            ouchat_api_status = 1;
+            ouchat_api_status = REQUESTING_API;
             TaskHandle_t xHandle = NULL;
 
             xTaskCreate(ouchat_api_set, "ouchat_api_set", 8192, (void *) 0, 4, &xHandle);
@@ -74,7 +66,7 @@ static void ouchat_event_handler(double_t x, double_t y, area_t start, area_t en
 
             printf("Inside\n");
 
-            ouchat_api_status = 1;
+            ouchat_api_status = REQUESTING_API;
             TaskHandle_t xHandle = NULL;
 
             xTaskCreate(ouchat_api_set, "ouchat_api_set", 8192, (void *) 1, 4, &xHandle);
@@ -120,13 +112,23 @@ void app_main(void) {
 
         esp_event_loop_create_default();
 
+        ouchat_wifi_register_events();
+
+        esp_netif_create_default_wifi_sta();
+
+        wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+        ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+
         ouchat_init_provisioning();
 
         if(!ouchat_is_provisioned()){
-
             printf("Starting provisioning...");
 
             ouchat_start_provisioning();
+
+            while (true){
+                WaitMs(&(ouchat_sensor_configuration.platform), 5);
+            }
 
         } else {
 
@@ -159,6 +161,7 @@ void app_main(void) {
 
         //Wait for the sensor to start ranging
         while (!is_ready){
+            printf("7");
             WaitMs(&(ouchat_sensor_configuration.platform), 5);
             vl53l5cx_check_data_ready(&ouchat_sensor_configuration, &is_ready);
         }
@@ -207,6 +210,7 @@ void app_main(void) {
 
     //Wait for the sensor to restart ranging
     while (!is_ready){
+        printf("3");
         WaitMs(&(ouchat_sensor_configuration.platform), 5);
         vl53l5cx_check_data_ready(&ouchat_sensor_configuration, &is_ready);
     }
@@ -224,6 +228,7 @@ void app_main(void) {
     memcpy(wakeup_frame, ouchat_areas, sizeof(ouchat_areas));
 
     while (!is_ready){
+        printf("k");
         WaitMs(&(ouchat_sensor_configuration.platform), 5);
         vl53l5cx_check_data_ready(&ouchat_sensor_configuration, &is_ready);
     }
@@ -258,6 +263,13 @@ void app_main(void) {
     TaskHandle_t xHandle = NULL;
 
     xTaskCreatePinnedToCore(ouchat_logger, "ouchat_log", 16384,&ouchat_sensor_context, 5, &xHandle, 1);
+    configASSERT(xHandle);
+
+#else
+
+    TaskHandle_t xHandle = NULL;
+
+    xTaskCreatePinnedToCore(ouchat_wifi_wakeup, "ouchat_wifi", 16384,NULL, 5, &xHandle, 1);
     configASSERT(xHandle);
 
 #endif
@@ -303,6 +315,7 @@ void app_main(void) {
     //Wait fot the api request to be compete
     while (ouchat_api_status == REQUESTING_API){
         WaitMs(&(ouchat_sensor_configuration.platform), 20);
+        printf(".");
     }
 
 #if CONFIG_OUCHAT_DEBUG_LOGGER

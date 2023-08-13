@@ -57,21 +57,28 @@ This project is using my [V53L5CX-Library](https://github.com/RJRP44/V53L5CX-Lib
 ```
 ├── CMakeLists.txt
 ├── 📁 components /        
-│   ├── 📁 ouchat /
-│   │   ├── ouchat_api.c
-│   │   ├── ouchat_processing.c
-│   │   ├── ouchat_utils.c
-│   │   └── 📁 include / 
-│   │       ├── ouchat_api.h
-│   │       ├── ouchat_processing.h
-│   │       └── ouchat_utils.h     
-│   └── 📁 Vl53l5cx /
-│       ├── platform.c
-│       ├── vl53v5cx_api.c
-│       └── 📁 include /
-│           ├── platform.h
-│           ├── vl53v5cx_api.h
-│           └── vl53v5cx_buffer.h
+│   └── 📁 ouchat /
+│       ├── ouchat_api.c
+│       ├── ouchat_ble.c
+│       ├── ouchat_led.c
+│       ├── ouchat_logger.c
+│       ├── ouchat_processing.c
+│       ├── ouchat_protocomm.c
+│       ├── ouchat_sensor.c
+│       ├── ouchat_utils.c
+│       ├── ouchat_wifi.c
+│       ├── ouchat_wifi_prov.c
+│       └── 📁 include / 
+│           ├── ouchat_api.h
+│           ├── ouchat_ble.h
+│           ├── ouchat_led.h
+│           ├── ouchat_logger.h
+│           ├── ouchat_processing.h
+│           ├── ouchat_protocomm.h
+│           ├── ouchat_sensor.h
+│           ├── ouchat_utils.h
+│           ├── ouchat_wifi.h
+│           └── ouchat_wifi_prov.c
 ├── 📁 main /
 │   ├── CMakeLists.txt
 │   ├── main.c
@@ -81,9 +88,9 @@ This project is using my [V53L5CX-Library](https://github.com/RJRP44/V53L5CX-Lib
 
 ## 📝 License
 
-Copyright © 2022 [RJRP44](https://www.github.com/RJRP44).
+Copyright © 2023 [RJRP44](https://www.github.com/RJRP44).
 
-This project is [BSD 3-Clause](https://opensource.org/licenses/BSD-3-Clause/)  licensed.
+This project is [GNU GPL](https://www.gnu.org/licenses/gpl-3.0.fr.html)  licensed.
 
 ## ✨ Show your support
 

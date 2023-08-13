@@ -17,6 +17,7 @@
 #include "esp_tls.h"
 #include "sdkconfig.h"
 #include "esp_crt_bundle.h"
+#include "ouchat_wifi.h"
 
 #define WEB_SERVER "v2.api.ouchat.fr"
 #define SET_WEB_URL "https://v2.api.ouchat.fr/api/cat/set?key=" CONFIG_OUCHAT_KEY "&cat=" CONFIG_OUCHAT_CAT "&value="
@@ -108,8 +109,15 @@ static void https_get_request_using_crt_bundle(void) {
 
 void ouchat_api_set(void *value)
 {
+    if (ouchat_api_status == WAITING_WIFI){
+        ESP_LOGI(TAG,"Waiting Wi-Fi");
+    }
+
+    ouchat_wait_wifi();
+
     sprintf(OUCHAT_API_REQUEST, "GET " SET_WEB_URL "%llu HTTP/1.1\r\nHost: " WEB_SERVER "\r\nUser-Agent: esp-idf/1.0 esp32\r\n\r\n", (uint64_t)value);
     https_get_request_using_crt_bundle();
+    ouchat_api_status = 0;
     vTaskDelete(NULL);
 }
 

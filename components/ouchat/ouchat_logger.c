@@ -15,7 +15,12 @@
 #define OUCHAT_LOG_QUEUE_SIZE 200
 
 static const char *TAG = "tcp_client";
+
+#if CONFIG_OUCHAT_DEBUG_LOGGER
 char host_ip[] = CONFIG_OUCHAT_DEBUG_LOGGER_IP;
+#else
+char host_ip[] = "0.0.0.0";
+#endif
 
 static QueueHandle_t log_queue;
 static QueueHandle_t deep_sleep_queue;
