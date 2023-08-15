@@ -161,7 +161,6 @@ void app_main(void) {
 
         //Wait for the sensor to start ranging
         while (!is_ready){
-            printf("7");
             WaitMs(&(ouchat_sensor_configuration.platform), 5);
             vl53l5cx_check_data_ready(&ouchat_sensor_configuration, &is_ready);
         }
@@ -210,7 +209,6 @@ void app_main(void) {
 
     //Wait for the sensor to restart ranging
     while (!is_ready){
-        printf("3");
         WaitMs(&(ouchat_sensor_configuration.platform), 5);
         vl53l5cx_check_data_ready(&ouchat_sensor_configuration, &is_ready);
     }
@@ -228,7 +226,6 @@ void app_main(void) {
     memcpy(wakeup_frame, ouchat_areas, sizeof(ouchat_areas));
 
     while (!is_ready){
-        printf("k");
         WaitMs(&(ouchat_sensor_configuration.platform), 5);
         vl53l5cx_check_data_ready(&ouchat_sensor_configuration, &is_ready);
     }
@@ -315,8 +312,9 @@ void app_main(void) {
     //Wait fot the api request to be compete
     while (ouchat_api_status == REQUESTING_API){
         WaitMs(&(ouchat_sensor_configuration.platform), 20);
-        printf(".");
     }
+
+    WaitMs(&(ouchat_sensor_configuration.platform), 2500);
 
 #if CONFIG_OUCHAT_DEBUG_LOGGER
     ouchat_deep_sleep_logger();

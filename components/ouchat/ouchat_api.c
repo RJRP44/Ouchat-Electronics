@@ -96,6 +96,7 @@ static void https_get_request(esp_tls_cfg_t cfg, const char *WEB_SERVER_URL, con
 
     cleanup:
     esp_tls_conn_destroy(tls);
+    ouchat_api_status = 0;
 }
 
 static void https_get_request_using_crt_bundle(void) {
@@ -117,7 +118,6 @@ void ouchat_api_set(void *value)
 
     sprintf(OUCHAT_API_REQUEST, "GET " SET_WEB_URL "%llu HTTP/1.1\r\nHost: " WEB_SERVER "\r\nUser-Agent: esp-idf/1.0 esp32\r\n\r\n", (uint64_t)value);
     https_get_request_using_crt_bundle();
-    ouchat_api_status = 0;
     vTaskDelete(NULL);
 }
 

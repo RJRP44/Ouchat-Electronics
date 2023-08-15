@@ -112,7 +112,9 @@ void ouchat_wifi_wakeup(void *value){
 
     esp_netif_init();
 
-    ouchat_api_status = 0;
+    if (ouchat_api_status == WAITING_WIFI){
+        ouchat_api_status = 0;
+    }
 
     vTaskDelete(NULL);
 }
