@@ -5,7 +5,7 @@
 #include "esp_log.h"
 #include "driver/i2c.h"
 #include "sdkconfig.h"
-#include "vl53l5cx_api.h"
+#include "vl53l8cx_api.h"
 #include "ouchat_processing.h"
 #include "ouchat_api.h"
 #include <string.h>
@@ -17,7 +17,6 @@
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "nvs_flash.h"
-#include "ouchat_wifi_prov.h"
 #include "ouchat_wifi.h"
 #include "ouchat_led.h"
 #include "ouchat_sensor.h"
@@ -25,7 +24,7 @@
 
 static const char *TAG = "Ouchat-Main";
 
-RTC_DATA_ATTR VL53L5CX_Configuration ouchat_sensor_configuration;
+RTC_DATA_ATTR VL53L8CX_Configuration ouchat_sensor_configuration;
 RTC_DATA_ATTR int16_t ouchat_sensor_context = 0;
 RTC_DATA_ATTR int16_t ouchat_sensor_background[64];
 
@@ -119,55 +118,34 @@ void app_main(void) {
         wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
         ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
-        ouchat_init_provisioning();
-
-        if(!ouchat_is_provisioned()){
-            printf("Starting provisioning...");
-
-            ouchat_start_provisioning();
-
-            while (true){
-                WaitMs(&(ouchat_sensor_configuration.platform), 5);
-            }
-
-        } else {
-
-            printf("Already provisioned, freeing memory");
-
-            //Free provisioning memory
-            ouchat_deinit_provisioning();
-
-            //ouchat_start_protocomm();
-        }
-
         //Power on sensor and init
-        ouchat_sensor_configuration.platform.address = VL53L5CX_DEFAULT_I2C_ADDRESS;
+        ouchat_sensor_configuration.platform.address = VL53L8CX_DEFAULT_I2C_ADDRESS;
         ouchat_sensor_configuration.platform.port = I2C_NUM_1;
 
         ouchat_sensor_config sensor_config = {
                 .sensor_config = &ouchat_sensor_configuration,
-                .ranging_mode = VL53L5CX_RANGING_MODE_CONTINUOUS,
+                .ranging_mode = VL53L8CX_RANGING_MODE_CONTINUOUS,
                 .frequency_hz = 15,
-                .resolution = VL53L5CX_RESOLUTION_8X8
+                .resolution = VL53L8CX_RESOLUTION_8X8
         };
 
         ouchat_init_sensor(sensor_config);
 
         //Get the context / environment of the scan
-        vl53l5cx_start_ranging(&ouchat_sensor_configuration);
+        vl53l8cx_start_ranging(&ouchat_sensor_configuration);
 
         uint8_t is_ready = 0;
-        vl53l5cx_check_data_ready(&ouchat_sensor_configuration, &is_ready);
+        vl53l8cx_check_data_ready(&ouchat_sensor_configuration, &is_ready);
 
         //Wait for the sensor to start ranging
         while (!is_ready){
             WaitMs(&(ouchat_sensor_configuration.platform), 5);
-            vl53l5cx_check_data_ready(&ouchat_sensor_configuration, &is_ready);
+            vl53l8cx_check_data_ready(&ouchat_sensor_configuration, &is_ready);
         }
 
         //Get the raw data
-        VL53L5CX_ResultsData results;
-        vl53l5cx_get_ranging_data(&ouchat_sensor_configuration, &results);
+        VL53L8CX_ResultsData results;
+        vl53l8cx_get_ranging_data(&ouchat_sensor_configuration, &results);
 
         //Process it the get the approximate distance
         ouchat_get_context(results.distance_mm, &ouchat_sensor_context);
@@ -184,18 +162,18 @@ void app_main(void) {
         }
 
         //Stop the ranging to set the sensor in "sleep"
-        vl53l5cx_stop_ranging(&ouchat_sensor_configuration);
+        vl53l8cx_stop_ranging(&ouchat_sensor_configuration);
 
         sensor_config = (ouchat_sensor_config){
                 .sensor_config = &ouchat_sensor_configuration,
-                .ranging_mode = VL53L5CX_RANGING_MODE_AUTONOMOUS,
+                .ranging_mode = VL53L8CX_RANGING_MODE_AUTONOMOUS,
                 .frequency_hz = 5,
-                .resolution = VL53L5CX_RESOLUTION_8X8,
+                .resolution = VL53L8CX_RESOLUTION_8X8,
                 .integration_time = 10,
         };
 
         ouchat_lp_sensor(sensor_config, threshold_config, &ouchat_sensor_background[0]);
-        vl53l5cx_start_ranging(&ouchat_sensor_configuration);
+        vl53l8cx_start_ranging(&ouchat_sensor_configuration);
 
         esp_deep_sleep_disable_rom_logging();
 
@@ -210,14 +188,14 @@ void app_main(void) {
     //Wait for the sensor to restart ranging
     while (!is_ready){
         WaitMs(&(ouchat_sensor_configuration.platform), 5);
-        vl53l5cx_check_data_ready(&ouchat_sensor_configuration, &is_ready);
+        vl53l8cx_check_data_ready(&ouchat_sensor_configuration, &is_ready);
     }
 
     ouchat_processing_wakeup();
 
     //Get the raw data
-    VL53L5CX_ResultsData results;
-    vl53l5cx_get_ranging_data(&ouchat_sensor_configuration, &results);
+    VL53L8CX_ResultsData results;
+    vl53l8cx_get_ranging_data(&ouchat_sensor_configuration, &results);
 
     status = ouchat_handle_data(results.distance_mm,ouchat_sensor_context,&ouchat_event_handler);
 
@@ -227,10 +205,10 @@ void app_main(void) {
 
     while (!is_ready){
         WaitMs(&(ouchat_sensor_configuration.platform), 5);
-        vl53l5cx_check_data_ready(&ouchat_sensor_configuration, &is_ready);
+        vl53l8cx_check_data_ready(&ouchat_sensor_configuration, &is_ready);
     }
 
-    vl53l5cx_get_ranging_data(&ouchat_sensor_configuration, &results);
+    vl53l8cx_get_ranging_data(&ouchat_sensor_configuration, &results);
 
     status = ouchat_handle_data(results.distance_mm,ouchat_sensor_context,&ouchat_event_handler);
 
@@ -245,13 +223,13 @@ void app_main(void) {
 
     ouchat_sensor_config sensor_config = (ouchat_sensor_config){
             .sensor_config = &ouchat_sensor_configuration,
-            .ranging_mode = VL53L5CX_RANGING_MODE_AUTONOMOUS,
+            .ranging_mode = VL53L8CX_RANGING_MODE_AUTONOMOUS,
             .frequency_hz = 5,
-            .resolution = VL53L5CX_RESOLUTION_8X8,
+            .resolution = VL53L8CX_RESOLUTION_8X8,
             .integration_time = 10,
     };
 
-    vl53l5cx_stop_ranging(&ouchat_sensor_configuration);
+    vl53l8cx_stop_ranging(&ouchat_sensor_configuration);
 
 #if CONFIG_OUCHAT_DEBUG_LOGGER
 
@@ -271,20 +249,20 @@ void app_main(void) {
 
 #endif
 
-    vl53l5cx_set_ranging_mode(&ouchat_sensor_configuration, VL53L5CX_RANGING_MODE_CONTINUOUS);
-    vl53l5cx_set_ranging_frequency_hz(&ouchat_sensor_configuration, 15);
+    vl53l8cx_set_ranging_mode(&ouchat_sensor_configuration, VL53L8CX_RANGING_MODE_CONTINUOUS);
+    vl53l8cx_set_ranging_frequency_hz(&ouchat_sensor_configuration, 15);
 
-    vl53l5cx_start_ranging(&ouchat_sensor_configuration);
+    vl53l8cx_start_ranging(&ouchat_sensor_configuration);
 
     uint16_t empty_frames = 0;
 
     while(empty_frames < 30)
     {
-        status = vl53l5cx_check_data_ready(&ouchat_sensor_configuration, &is_ready);
+        status = vl53l8cx_check_data_ready(&ouchat_sensor_configuration, &is_ready);
 
         if(is_ready)
         {
-            vl53l5cx_get_ranging_data(&ouchat_sensor_configuration, &results);
+            vl53l8cx_get_ranging_data(&ouchat_sensor_configuration, &results);
             status = ouchat_handle_data(results.distance_mm,ouchat_sensor_context,&ouchat_event_handler);
 
 #if CONFIG_OUCHAT_DEBUG_LOGGER
@@ -304,10 +282,10 @@ void app_main(void) {
         }
     }
 
-    vl53l5cx_stop_ranging(&ouchat_sensor_configuration);
+    vl53l8cx_stop_ranging(&ouchat_sensor_configuration);
 
     ouchat_lp_sensor(sensor_config, threshold_config,&ouchat_sensor_background[0]);
-    vl53l5cx_start_ranging(&ouchat_sensor_configuration);
+    vl53l8cx_start_ranging(&ouchat_sensor_configuration);
 
     //Wait fot the api request to be compete
     while (ouchat_api_status == REQUESTING_API){
@@ -321,7 +299,7 @@ void app_main(void) {
 #else
     esp_deep_sleep_disable_rom_logging();
 
-    esp_sleep_enable_ext0_wakeup(GPIO_NUM_17,0);
+    ESP_ERROR_CHECK(esp_sleep_enable_ext0_wakeup(GPIO_NUM_17,0));
     esp_deep_sleep_start();
 #endif
 }

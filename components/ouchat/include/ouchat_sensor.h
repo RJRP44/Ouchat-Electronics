@@ -4,7 +4,7 @@
 
 #include "stdint.h"
 #include "platform.h"
-#include "vl53l5cx_api.h"
+#include "vl53l8cx_api.h"
 
 #ifndef OUCHAT_ELECTRONICS_OUCHAT_SENSOR_H
 #define OUCHAT_ELECTRONICS_OUCHAT_SENSOR_H
@@ -15,7 +15,7 @@
 #define OUCHAT_SENSOR_DEFAULT_SCL 2
 
 typedef struct {
-    VL53L5CX_Configuration *sensor_config;
+    VL53L8CX_Configuration *sensor_config;
     uint8_t resolution;
     uint8_t frequency_hz;
     uint8_t ranging_mode;

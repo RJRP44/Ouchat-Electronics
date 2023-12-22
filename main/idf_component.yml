@@ -1,6 +1,3 @@
 dependencies:
+  rjrp44/vl53l8cx: "^1.0.0"
   espressif/led_strip: "^2.3.0"
-
-  #V53L5CX-Library
-  vl53l5cx:
-    git: https://github.com/RJRP44/V53L5CX-Library.git

@@ -8,7 +8,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <math.h>
-#include "vl53l5cx_api.h"
+#include "vl53l8cx_api.h"
 #include "ouchat_utils.h"
 
 #define X_FROM_1D(i) (i - (i % 8)) / 8
