@@ -2,7 +2,6 @@
 // Created by Romain on 26/02/2023.
 //
 
-#include <wifi_provisioning/manager.h>
 #include <nvs_flash.h>
 #include "esp_system.h"
 #include "esp_wifi.h"
@@ -10,7 +9,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "esp_log.h"
-#include "ouchat_wifi_prov.h"
 #include "ouchat_wifi.h"
 #include "ouchat_api.h"
 #include "ouchat_led.h"
@@ -23,41 +21,8 @@ static EventGroupHandle_t wifi_event_group;
 
 static void wevent_handler(void* arg, esp_event_base_t event_base,int32_t event_id, void* event_data)
 {
-    static int retries;
 
-    if (event_base == WIFI_PROV_EVENT) {
-        switch (event_id) {
-            case WIFI_PROV_START:
-                //Provisioning started
-                break;
-            case WIFI_PROV_CRED_RECV:
-                //Received Wi-Fi credentials
-                break;
-            case WIFI_PROV_CRED_FAIL: {
-                //Provisioning failed!
-                wifi_prov_mgr_reset_sm_state_on_failure();
-
-                break;
-            }
-            case WIFI_PROV_CRED_SUCCESS:{
-                //Provisioning successful
-
-                TaskHandle_t xHandle = NULL;
-                xTaskCreate(ouchat_api_join, "ouchat_api_join", 8192, (void *) ouchat_provisioner_token, 5, &xHandle);
-                configASSERT(xHandle);
-
-
-                break;
-            }
-            case WIFI_PROV_END:
-                // De-initialize manager once provisioning is finished
-                ouchat_deinit_provisioning();
-
-                break;
-            default:
-                break;
-        }
-    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
 
         esp_wifi_connect();
 
@@ -78,7 +43,6 @@ void ouchat_wait_wifi(){
 void ouchat_wifi_register_events(){
     wifi_event_group = xEventGroupCreate();
 
-    esp_event_handler_register(WIFI_PROV_EVENT, ESP_EVENT_ANY_ID, &wevent_handler, NULL);
     esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wevent_handler, NULL);
     esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wevent_handler, NULL);
 }
