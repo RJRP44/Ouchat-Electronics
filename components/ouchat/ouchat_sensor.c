@@ -101,6 +101,7 @@ uint8_t ouchat_lp_sensor(ouchat_sensor_config config, ouchat_motion_threshold_co
     //Enable detection thresholds
     vl53l8cx_set_detection_thresholds(config.sensor_config, motion_thresholds);
     vl53l8cx_set_detection_thresholds_enable(config.sensor_config, 1);
+    vl53l8cx_set_detection_thresholds_auto_stop(config.sensor_config, 0);
 
     return 0;
 }

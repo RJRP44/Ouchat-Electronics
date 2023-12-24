@@ -10,9 +10,8 @@
 #include "ouchat_logger.h"
 #include "ouchat_wifi.h"
 #include "cJSON.h"
-
-#define OUCHAT_LOG_SIZE 190
-#define OUCHAT_LOG_QUEUE_SIZE 200
+#include "vl53l8cx_api.h"
+#include "ouchat_sensor.h"
 
 static const char *TAG = "tcp_client";
 
@@ -24,20 +23,32 @@ char host_ip[] = "0.0.0.0";
 
 static QueueHandle_t log_queue;
 static QueueHandle_t deep_sleep_queue;
+static EventGroupHandle_t logger_event_group;
 
 uint8_t ouchat_logger_init() {
     log_queue = xQueueCreate(OUCHAT_LOG_QUEUE_SIZE, OUCHAT_LOG_SIZE);
     deep_sleep_queue = xQueueCreate(1, 1);
+    logger_event_group = xEventGroupCreate();
     return 0;
 }
 
-uint8_t ouchat_log(unsigned char *data) {
-    xQueueSend(log_queue, data, 0);
+uint8_t ouchat_log(unsigned char *data, size_t size) {
+
+    //12 for timestamp + 172 for base64 data + \0
+    size_t buffer_size = 12 + 172 + 1;
+    char buffer [buffer_size];
+    uint32_t time = esp_log_timestamp();
+
+    //Add timestamp to the data
+    snprintf(buffer, buffer_size, "(%lu)%s", time, data);
+
+    xQueueSend(log_queue, buffer, 0);
     return 0;
 }
 
-uint8_t ouchat_deep_sleep_logger() {
+uint8_t ouchat_stop_logger() {
     xQueueSend(deep_sleep_queue, "1", 0);
+    xEventGroupWaitBits(logger_event_group, OUCHAT_LOG_EVENT_STOPPED, false, true, portMAX_DELAY);
     return 0;
 }
 
@@ -51,7 +62,8 @@ void ouchat_logger(void *arg) {
 
     int s;
 
-    ouchat_wifi_wakeup(NULL);
+    uint8_t option = 2;
+    ouchat_wifi_wakeup(&option);
 
     s = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
     if (socket < 0) {
@@ -92,17 +104,11 @@ void ouchat_logger(void *arg) {
             vTaskDelay(500 / portTICK_PERIOD_MS);
             close(s);
 
-            esp_deep_sleep_disable_rom_logging();
-
-            esp_sleep_enable_ext0_wakeup(GPIO_NUM_17, 0);
-            esp_deep_sleep_start();
+            xEventGroupSetBits(logger_event_group, OUCHAT_LOG_EVENT_STOPPED);
         }
         if (msg_queue_lenght >= 1) {
-
             xQueueReceive(log_queue, log, 0);
             char *end = log + strlen(log);
-            *end = '\n';
-            *(end + 1) = '\0';
             if (write(s, log, strlen(log)) < 0) {
                 ESP_LOGE(TAG, "... Send failed \n");
                 close(s);

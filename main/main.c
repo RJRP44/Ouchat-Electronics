@@ -21,6 +21,7 @@
 #include "ouchat_led.h"
 #include "ouchat_sensor.h"
 #include "ouchat_logger.h"
+#include "vl53l8cx_plugin_detection_thresholds.h"
 
 static const char *TAG = "Ouchat-Main";
 
@@ -177,11 +178,28 @@ void app_main(void) {
 
         esp_deep_sleep_disable_rom_logging();
 
-        esp_sleep_enable_ext0_wakeup(GPIO_NUM_17,0);
+        esp_sleep_enable_ext0_wakeup(GPIO_NUM_3,0);
         esp_deep_sleep_start();
-        return;
     }
 
+    //By using Interrupt autostop, the frame measurements are aborted when an interrupt is triggered
+    ouchat_sensor_config sensor_config = (ouchat_sensor_config){
+            .sensor_config = &ouchat_sensor_configuration,
+            .ranging_mode = VL53L8CX_RANGING_MODE_AUTONOMOUS,
+            .frequency_hz = 5,
+            .resolution = VL53L8CX_RESOLUTION_8X8,
+            .integration_time = 10,
+    };
+
+    vl53l8cx_stop_ranging(&ouchat_sensor_configuration);
+
+    vl53l8cx_set_ranging_mode(&ouchat_sensor_configuration, VL53L8CX_RANGING_MODE_CONTINUOUS);
+    vl53l8cx_set_ranging_frequency_hz(&ouchat_sensor_configuration, 15);
+    vl53l8cx_set_detection_thresholds_auto_stop(&ouchat_sensor_configuration, 0);
+    vl53l8cx_start_ranging(&ouchat_sensor_configuration);
+
+    //Get the raw data
+    VL53L8CX_ResultsData results;
     uint8_t is_ready = 0;
     uint8_t status;
 
@@ -193,43 +211,6 @@ void app_main(void) {
 
     ouchat_processing_wakeup();
 
-    //Get the raw data
-    VL53L8CX_ResultsData results;
-    vl53l8cx_get_ranging_data(&ouchat_sensor_configuration, &results);
-
-    status = ouchat_handle_data(results.distance_mm,ouchat_sensor_context,&ouchat_event_handler);
-
-    area_t wakeup_frame[16];
-
-    memcpy(wakeup_frame, ouchat_areas, sizeof(ouchat_areas));
-
-    while (!is_ready){
-        WaitMs(&(ouchat_sensor_configuration.platform), 5);
-        vl53l8cx_check_data_ready(&ouchat_sensor_configuration, &is_ready);
-    }
-
-    vl53l8cx_get_ranging_data(&ouchat_sensor_configuration, &results);
-
-    status = ouchat_handle_data(results.distance_mm,ouchat_sensor_context,&ouchat_event_handler);
-
-
-
-    for (int i = 0; i < 16; ++i) {
-        if(wakeup_frame[i].top_left != C_TO_1D(16, 16) && ouchat_areas[i].top_left != C_TO_1D(16,16)){
-            ouchat_process_trajectory_points(wakeup_frame[i],ouchat_areas[i], i);
-        }
-    }
-
-
-    ouchat_sensor_config sensor_config = (ouchat_sensor_config){
-            .sensor_config = &ouchat_sensor_configuration,
-            .ranging_mode = VL53L8CX_RANGING_MODE_AUTONOMOUS,
-            .frequency_hz = 5,
-            .resolution = VL53L8CX_RESOLUTION_8X8,
-            .integration_time = 10,
-    };
-
-    vl53l8cx_stop_ranging(&ouchat_sensor_configuration);
 
 #if CONFIG_OUCHAT_DEBUG_LOGGER
 
@@ -239,7 +220,6 @@ void app_main(void) {
 
     xTaskCreatePinnedToCore(ouchat_logger, "ouchat_log", 16384,&ouchat_sensor_context, 5, &xHandle, 1);
     configASSERT(xHandle);
-
 #else
 
     TaskHandle_t xHandle = NULL;
@@ -249,10 +229,6 @@ void app_main(void) {
 
 #endif
 
-    vl53l8cx_set_ranging_mode(&ouchat_sensor_configuration, VL53L8CX_RANGING_MODE_CONTINUOUS);
-    vl53l8cx_set_ranging_frequency_hz(&ouchat_sensor_configuration, 15);
-
-    vl53l8cx_start_ranging(&ouchat_sensor_configuration);
 
     uint16_t empty_frames = 0;
 
@@ -272,8 +248,8 @@ void app_main(void) {
 
             mbedtls_base64_encode(output, 190, &outlen, (const unsigned char *) results.distance_mm, sizeof (results.distance_mm));
 
-            ouchat_log(output);
-
+            ouchat_log(output, outlen);
+            printf("%s\n", output);
 #endif
 
             if(empty_frames != 0 || status){
@@ -281,11 +257,6 @@ void app_main(void) {
             }
         }
     }
-
-    vl53l8cx_stop_ranging(&ouchat_sensor_configuration);
-
-    ouchat_lp_sensor(sensor_config, threshold_config,&ouchat_sensor_background[0]);
-    vl53l8cx_start_ranging(&ouchat_sensor_configuration);
 
     //Wait fot the api request to be compete
     while (ouchat_api_status == REQUESTING_API){
@@ -295,11 +266,18 @@ void app_main(void) {
     WaitMs(&(ouchat_sensor_configuration.platform), 2500);
 
 #if CONFIG_OUCHAT_DEBUG_LOGGER
-    ouchat_deep_sleep_logger();
-#else
+    //If logging is enabled end the connection
+    ouchat_stop_logger();
+#endif
+
+    vl53l8cx_stop_ranging(&ouchat_sensor_configuration);
+
+    ouchat_lp_sensor(sensor_config, threshold_config, &ouchat_sensor_background[0]);
+    vl53l8cx_start_ranging(&ouchat_sensor_configuration);
+
     esp_deep_sleep_disable_rom_logging();
 
-    ESP_ERROR_CHECK(esp_sleep_enable_ext0_wakeup(GPIO_NUM_17,0));
+    ESP_ERROR_CHECK(esp_sleep_enable_ext0_wakeup(GPIO_NUM_3,0));
     esp_deep_sleep_start();
-#endif
+
 }

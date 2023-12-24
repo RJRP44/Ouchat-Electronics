@@ -80,5 +80,9 @@ void ouchat_wifi_wakeup(void *value){
         ouchat_api_status = 0;
     }
 
+    if (value != NULL){
+        return;
+    }
+
     vTaskDelete(NULL);
 }
