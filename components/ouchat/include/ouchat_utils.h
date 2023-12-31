@@ -9,17 +9,10 @@
 #include <math.h>
 
 #define ABSCISSA_FROM_1D(i) (uint8_t) floor(i / 8.00)
-#define ORDINATE_FROM_1D(i) i % 8
+#define ORDINATE_FROM_1D(i) (i % 8)
 #define POINT_TO_1D(x, y) 8*(x)+(y)
 
-/**
- * @brief Structure point contains a coordinate.
- */
-
-typedef struct {
-    double_t x;
-    double_t y;
-} point_t;
+#define MAX(x,y) (((x) >= (y)) ? (x) : (y))
 
 
 /**
@@ -32,9 +25,9 @@ typedef struct {
 typedef struct {
     uint8_t top_left;
     uint8_t bottom_right;
-    point_t center;
+  //  point_t center;
     uint8_t sum;
-    point_t left_center;
+  //  point_t left_center;
     uint16_t indexes[64];
     int8_t size;
 } area_t;
