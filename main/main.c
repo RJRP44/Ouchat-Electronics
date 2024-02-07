@@ -8,6 +8,8 @@
 #include <sensor.h>
 #include <calibrator.h>
 #include <data_processor.h>
+#include <logger.h>
+#include <mbedtls/base64.h>
 
 #define LOG_TAG "ouchat"
 
@@ -37,15 +39,15 @@ void app_main(void) {
         //Calibrate the sensor
         vl53l8cx_start_ranging(&sensor.handle);
 
-        ESP_LOGI(LOG_TAG, "Starting sensor calibration\n");
+        ESP_LOGI(LOG_TAG, "Starting sensor calibration");
         calibrate_sensor(&sensor);
-        ESP_LOGI(LOG_TAG, "Sensor calibrated !\n");
+        ESP_LOGI(LOG_TAG, "Sensor calibrated !");
 
         //Stop the ranging to set the sensor in "sleep"
         sensor_update_config(&sensor, DEFAULT_VL53L8CX_LP_CONFIG);
         sensor_init_thresholds(&sensor);
 
-        ESP_LOGI(LOG_TAG, "Entering deep sleep\n");
+        ESP_LOGI(LOG_TAG, "Entering deep sleep");
 
         //Add interrupt pin
         esp_deep_sleep_disable_rom_logging();
@@ -54,6 +56,15 @@ void app_main(void) {
         //Start the deep sleep
         esp_deep_sleep_start();
     }
+
+#if CONFIG_OUCHAT_DEBUG_LOGGER
+    init_tcp_logger();
+
+    TaskHandle_t xHandle = NULL;
+
+    xTaskCreatePinnedToCore(tcp_logger_task, "ouchat_logger", 16384, &sensor.calibration, 5, &xHandle, 1);
+    configASSERT(xHandle);
+#endif
 
     //Update and restart the sensor
     sensor_update_config(&sensor, DEFAULT_VL53L8CX_CONFIG);
@@ -72,7 +83,7 @@ void app_main(void) {
     uint16_t empty_frames = 0;
 
     while (empty_frames < 30) {
-        status = vl53l8cx_check_data_ready(&sensor.handle, &ready);
+        vl53l8cx_check_data_ready(&sensor.handle, &ready);
 
         if (ready) {
 
@@ -88,17 +99,36 @@ void app_main(void) {
 
             status = process_data(sensor_data, sensor.calibration);
 
+
+#if CONFIG_OUCHAT_DEBUG_LOGGER
+
+            //Use base 64 to save the raw data
+            size_t length;
+            unsigned char output[190];
+
+            mbedtls_base64_encode(output, 190, &length, (const unsigned char *) results.distance_mm, sizeof (results.distance_mm));
+            tcp_log(output);
+
+#endif
+
             if (empty_frames != 0 || status) {
                 empty_frames = status == 0 ? 0 : empty_frames + status;
             }
         }
     }
 
+#if CONFIG_OUCHAT_DEBUG_LOGGER
+
+    //Stop the logger before sleep
+    stop_tcp_logger();
+
+#endif
+
     //Stop the ranging to set the sensor in "sleep"
     sensor_update_config(&sensor, DEFAULT_VL53L8CX_LP_CONFIG);
     sensor_init_thresholds(&sensor);
 
-    ESP_LOGI(LOG_TAG, "Entering deep sleep\n");
+    ESP_LOGI(LOG_TAG, "Entering deep sleep");
 
     //Add interrupt pin
     esp_deep_sleep_disable_rom_logging();

@@ -11,7 +11,7 @@
 #define UNDEFINED (-1)
 #define BACKGROUND (-2)
 
-#define OBJ_CLEARANCE_MM 75
+#define OBJ_CLEARANCE_MM 150
 
 esp_err_t process_init();
 esp_err_t print_frame(frame_t frame);
