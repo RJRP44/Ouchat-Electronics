@@ -41,7 +41,10 @@ void app_main(void) {
 
         ESP_LOGI(LOG_TAG, "Starting sensor calibration");
         calibrate_sensor(&sensor);
-        ESP_LOGI(LOG_TAG, "Sensor calibrated !");
+        ESP_LOGI(LOG_TAG, "Sensor calibrated on %d points !", sensor.calibration.inliers);
+
+        //Init motion detection based on the previous calibration
+        init_motion_indicator(&sensor);
 
         //Stop the ranging to set the sensor in "sleep"
         sensor_update_config(&sensor, DEFAULT_VL53L8CX_LP_CONFIG);

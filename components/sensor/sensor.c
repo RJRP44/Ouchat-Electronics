@@ -3,6 +3,7 @@
 //
 
 #include "include/sensor.h"
+#include "vl53l8cx_plugin_motion_indicator.h"
 #include <ouchat_types.h>
 
 esp_err_t init_i2c(i2c_port_t port, i2c_config_t config) {
@@ -21,31 +22,31 @@ esp_err_t sensor_init(sensor_t *sensor) {
 
     status = vl53l8cx_is_alive(&sensor->handle, &alive);
     if (!alive || status) {
-        ESP_LOGE(SENSOR_LOG_TAG, "VL53L8CX not detected at %X\n", sensor->handle.platform.address);
+        ESP_LOGE(SENSOR_LOG_TAG, "VL53L8CX not detected at %X", sensor->handle.platform.address);
         return ESP_FAIL;
     }
 
     status = vl53l8cx_init(&sensor->handle);
     if (status) {
-        ESP_LOGE(SENSOR_LOG_TAG, "VL53L8CX ULD Loading failed\n");
+        ESP_LOGE(SENSOR_LOG_TAG, "VL53L8CX ULD Loading failed");
         return ESP_FAIL;
     }
 
     status = vl53l8cx_set_resolution(&sensor->handle, sensor->config.resolution);
     if (status) {
-        ESP_LOGE(SENSOR_LOG_TAG, "VL53L8CX set resolution to %d failed\n", sensor->config.resolution);
+        ESP_LOGE(SENSOR_LOG_TAG, "VL53L8CX set resolution to %d failed", sensor->config.resolution);
         return ESP_FAIL;
     }
 
     status = vl53l8cx_set_ranging_frequency_hz(&sensor->handle, sensor->config.frequency);
     if (status) {
-        ESP_LOGE(SENSOR_LOG_TAG, "VL53L8CX set frequency to %dHz failed\n", sensor->config.frequency);
+        ESP_LOGE(SENSOR_LOG_TAG, "VL53L8CX set frequency to %dHz failed", sensor->config.frequency);
         return ESP_FAIL;
     }
 
     status = vl53l8cx_set_ranging_mode(&sensor->handle, sensor->config.mode);
     if (status) {
-        ESP_LOGE(SENSOR_LOG_TAG, "VL53L8CX set ranging mode failed\n");
+        ESP_LOGE(SENSOR_LOG_TAG, "VL53L8CX set ranging mode failed");
         return ESP_FAIL;
     }
 
@@ -56,7 +57,43 @@ esp_err_t sensor_init(sensor_t *sensor) {
     //Set the integration time only if the sensor is in autonomous mode
     status = vl53l8cx_set_integration_time_ms(&sensor->handle, sensor->config.integration_time);
     if (status) {
-        ESP_LOGE(SENSOR_LOG_TAG, "VL53L8CX set integration time failed\n");
+        ESP_LOGE(SENSOR_LOG_TAG, "VL53L8CX set integration time failed");
+        return ESP_FAIL;
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t init_motion_indicator(sensor_t *sensor) {
+
+    uint8_t status = vl53l8cx_motion_indicator_init(&sensor->handle, &sensor->motion_config, VL53L8CX_RESOLUTION_8X8);
+    if (status) {
+        ESP_LOGE(SENSOR_LOG_TAG, "Motion indicator init failed with status : %u", status);
+        return ESP_FAIL;
+    }
+
+    //Calculate the trigger distances
+    uint16_t min, max;
+    min = (uint16_t) sensor->calibration.floor_distance - AVERAGE_CAT_HEIGHT;
+
+    //The minimum distance for indicator is 400mm
+    if (min < 400){
+        min = 400;
+        ESP_LOGW(SENSOR_LOG_TAG, "The sensor seems too close to the floor, which can lead to malfunctions");
+    }
+
+    max = sensor->calibration.furthest_point;
+
+    //The distance between the min and the max mustn't exceed 1500mm
+    if (max - min > 1500){
+        max = min + 1500;
+    }
+
+    ESP_LOGI(SENSOR_LOG_TAG, "Motion indicator(%d,%d)",min,max);
+
+    status = vl53l8cx_motion_indicator_set_distance_motion(&sensor->handle, &sensor->motion_config, min, max);
+    if (status) {
+        ESP_LOGE(SENSOR_LOG_TAG, "Motion indicator set distance motion failed with status : %u", status);
         return ESP_FAIL;
     }
 
@@ -108,12 +145,12 @@ esp_err_t sensor_init_thresholds(sensor_t *sensor){
     //Add thresholds for all zones
     for(int i = 0; i < 64; i++){
         sensor->thresholds[i].zone_num = i;
-        sensor->thresholds[i].measurement = VL53L8CX_DISTANCE_MM;
-        sensor->thresholds[i].type = VL53L8CX_LESS_THAN_EQUAL_MIN_CHECKER;
+        sensor->thresholds[i].measurement = VL53L8CX_MOTION_INDICATOR;
+        sensor->thresholds[i].type = VL53L8CX_GREATER_THAN_MAX_CHECKER;
         sensor->thresholds[i].mathematic_operation = VL53L8CX_OPERATION_NONE;
 
-        sensor->thresholds[i].param_high_thresh = 0;
-        sensor->thresholds[i].param_low_thresh = *(&sensor->calibration.background[0][0] + i) - BACKGROUND_THRESHOLD;
+        sensor->thresholds[i].param_low_thresh = 44;
+        sensor->thresholds[i].param_high_thresh = 44;
     }
 
     //Define the last threshold

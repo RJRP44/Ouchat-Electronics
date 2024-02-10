@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <vl53l8cx_api.h>
 #include <vl53l8cx_plugin_detection_thresholds.h>
+#include <vl53l8cx_plugin_motion_indicator.h>
 
 typedef struct {
     uint8_t x;
@@ -52,6 +53,7 @@ typedef struct {
     plane_t floor;
     uint8_t inliers;
     uint16_t background[8][8];
+    uint16_t furthest_point;
     double floor_distance;
 } calibration_config_t;
 
@@ -67,6 +69,7 @@ typedef struct {
     sensor_config_t config;
     calibration_config_t calibration;
     VL53L8CX_DetectionThresholds thresholds[VL53L8CX_NB_THRESHOLDS];
+    VL53L8CX_Motion_Configuration motion_config;
 } sensor_t;
 
 #endif //OUCHAT_DATA_PREPROCESSING_OUCHAT_UNITS_H

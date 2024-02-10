@@ -153,6 +153,12 @@ esp_err_t calibrate_sensor(sensor_t *sensor){
     for (X_Y_FOR_LOOP) {
         calibration_data[x][y] = (double) sum[x][y] / OUCHAT_CALIBRATION_DATASET_SIZE;
         sensor->calibration.background[x][y] = (uint16_t) round(calibration_data[x][y]);
+
+        if (sensor->calibration.furthest_point > (uint16_t) round(calibration_data[x][y])){
+            continue;
+        }
+
+        sensor->calibration.furthest_point = (uint16_t) round(calibration_data[x][y]);
     }
 
     sensor->calibration.inliers = 0;
