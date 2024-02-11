@@ -115,6 +115,16 @@ static int8_t nearest_neighbour(frame_t *frame, p_coord_t coord) {
     return -1;
 }
 
+int16_t cluster_index(const cluster_t *array, int16_t cluster_id, uint8_t length){
+    //Search in the entire array
+    for (uint8_t i = 0; i < length; i++) {
+        if (array[i].id == cluster_id) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 static int pixel_comparator(const void *pa, const void *pb) {
     p_coord_t a = *(p_coord_t *) pa;
     p_coord_t b = *(p_coord_t *) pb;
@@ -123,8 +133,10 @@ static int pixel_comparator(const void *pa, const void *pb) {
     point_t *point_b = &previous_frame.data[b.x][b.y];
 
     //First compare the clusters
-    cluster_t *cluster_a = &previous_frame.clusters[point_a->cluster_id];
-    cluster_t *cluster_b = &previous_frame.clusters[point_b->cluster_id];
+    int16_t index_a = cluster_index(previous_frame.clusters,point_a->cluster_id,previous_frame.clusters_count);
+    int16_t index_b = cluster_index(previous_frame.clusters,point_b->cluster_id,previous_frame.clusters_count);
+    cluster_t *cluster_a = &previous_frame.clusters[index_a];
+    cluster_t *cluster_b = &previous_frame.clusters[index_b];
 
     //If the two points are not in the same cluster the biggest cluster wins
     if (cluster_a->id != cluster_b->id) {
@@ -133,16 +145,6 @@ static int pixel_comparator(const void *pa, const void *pb) {
 
     //In a cluster the most centered point wins, calculated using Von Neumann neighborhood
     return nearest_neighbour(&previous_frame, b) - nearest_neighbour(&previous_frame, a);
-}
-
-static bool contains_cluster(const cluster_t *array, int16_t cluster_id, uint8_t length) {
-    //Search in the entire array
-    for (uint8_t i = 0; i < length; i++) {
-        if (array[i].id == cluster_id) {
-            return true;
-        }
-    }
-    return false;
 }
 
 esp_err_t process_init() {
@@ -264,7 +266,7 @@ esp_err_t process_data(coord_t sensor_data[8][8], calibration_config_t calibrati
         int16_t cluster_id = previous_point->cluster_id;
 
         //Skip if the cluster was already transferred to the current frame
-        if (contains_cluster(clusters, cluster_id, count)) {
+        if (cluster_index(clusters, cluster_id, count) != -1) {
             continue;
         }
 
@@ -303,12 +305,12 @@ esp_err_t process_data(coord_t sensor_data[8][8], calibration_config_t calibrati
         for (int16_t i = 0; i < 128; ++i) {
 
             //This cluster exist in the previous frame
-            if (contains_cluster(previous_frame.clusters, i, previous_frame.clusters_count)) {
+            if (cluster_index(previous_frame.clusters, i, previous_frame.clusters_count) != -1) {
                 continue;
             }
 
             //This cluster already exist in this frame
-            if (contains_cluster(clusters, i, count)) {
+            if (cluster_index(clusters, i, count) != -1) {
                 continue;
             }
 
