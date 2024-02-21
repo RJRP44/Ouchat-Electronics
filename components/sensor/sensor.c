@@ -89,8 +89,6 @@ esp_err_t init_motion_indicator(sensor_t *sensor) {
         max = min + 1500;
     }
 
-    ESP_LOGI(SENSOR_LOG_TAG, "Motion indicator(%d,%d)",min,max);
-
     status = vl53l8cx_motion_indicator_set_distance_motion(&sensor->handle, &sensor->motion_config, min, max);
     if (status) {
         ESP_LOGE(SENSOR_LOG_TAG, "Motion indicator set distance motion failed with status : %u", status);
@@ -149,8 +147,8 @@ esp_err_t sensor_init_thresholds(sensor_t *sensor){
         sensor->thresholds[i].type = VL53L8CX_GREATER_THAN_MAX_CHECKER;
         sensor->thresholds[i].mathematic_operation = VL53L8CX_OPERATION_NONE;
 
-        sensor->thresholds[i].param_low_thresh = 44;
-        sensor->thresholds[i].param_high_thresh = 44;
+        sensor->thresholds[i].param_low_thresh = MOTION_THRESHOLD;
+        sensor->thresholds[i].param_high_thresh = MOTION_THRESHOLD;
     }
 
     //Define the last threshold
@@ -162,6 +160,17 @@ esp_err_t sensor_init_thresholds(sensor_t *sensor){
     vl53l8cx_set_detection_thresholds_auto_stop(&sensor->handle, 1);
 
     vl53l8cx_start_ranging(&sensor->handle);
+
+    return ESP_OK;
+}
+
+esp_err_t reset_sensor_trigger(){
+    gpio_set_direction(4,GPIO_MODE_OUTPUT);
+    gpio_set_level(4,1);
+
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+
+    gpio_set_level(4,0);
 
     return ESP_OK;
 }

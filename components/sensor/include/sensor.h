@@ -24,6 +24,7 @@
 #define OUCHAT_SENSOR_DEFAULT_INT 3
 
 #define AVERAGE_CAT_HEIGHT 250
+#define MOTION_THRESHOLD 50
 
 //Default i2c, and sensor configs
 #define DEFAULT_I2C_CONFIG (i2c_config_t){         \
@@ -53,5 +54,6 @@ esp_err_t sensor_init(sensor_t *sensor);
 esp_err_t init_motion_indicator(sensor_t *sensor);
 esp_err_t sensor_update_config(sensor_t *sensor, sensor_config_t config);
 esp_err_t sensor_init_thresholds(sensor_t *sensor);
+esp_err_t reset_sensor_trigger();
 
 #endif //OUCHAT_ELECTRONICS_SENSOR_H

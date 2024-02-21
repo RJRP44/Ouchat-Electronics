@@ -1,3 +1,3 @@
 dependencies:
-  rjrp44/vl53l8cx: "^1.0.0"
+  rjrp44/vl53l8cx: "^1.1.1"
   espressif/led_strip: "^2.3.0"

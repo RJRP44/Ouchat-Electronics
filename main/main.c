@@ -46,6 +46,9 @@ void app_main(void) {
         //Init motion detection based on the previous calibration
         init_motion_indicator(&sensor);
 
+        //Reset the trigger saved by the bistable 555 circuit
+        reset_sensor_trigger();
+
         //Stop the ranging to set the sensor in "sleep"
         sensor_update_config(&sensor, DEFAULT_VL53L8CX_LP_CONFIG);
         sensor_init_thresholds(&sensor);
@@ -127,15 +130,18 @@ void app_main(void) {
 
 #endif
 
+    //Reset the trigger saved by the bistable 555 circuit
+    reset_sensor_trigger();
+
+    //Add interrupt pin
+    esp_deep_sleep_disable_rom_logging();
+    esp_sleep_enable_ext0_wakeup(OUCHAT_SENSOR_DEFAULT_INT, 0);
+
     //Stop the ranging to set the sensor in "sleep"
     sensor_update_config(&sensor, DEFAULT_VL53L8CX_LP_CONFIG);
     sensor_init_thresholds(&sensor);
 
     ESP_LOGI(LOG_TAG, "Entering deep sleep");
-
-    //Add interrupt pin
-    esp_deep_sleep_disable_rom_logging();
-    esp_sleep_enable_ext0_wakeup(OUCHAT_SENSOR_DEFAULT_INT, 0);
 
     //Start the deep sleep
     esp_deep_sleep_start();
