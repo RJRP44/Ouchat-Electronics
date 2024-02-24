@@ -25,13 +25,25 @@ typedef struct {
 } point_t;
 
 typedef struct {
+    uint16_t age;
+    coord_t entry_coord;
+    coord_t exit_coord;
+    double average_deviation;
+    double average_height;
+    coord_t maximum;
+    coord_t minimum;
+} tracker_t;
+
+typedef struct {
     int16_t id;
     uint8_t size;
+    tracker_t tracker;
+    coord_t coord;
 } cluster_t;
 
 typedef struct {
     point_t data[8][8];
-    int8_t clusters_count;
+    int16_t clusters_count;
     cluster_t *clusters;
     int8_t background_count;
 } frame_t;

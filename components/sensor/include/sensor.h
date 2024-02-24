@@ -11,6 +11,7 @@
 #include <vl53l8cx_plugin_detection_thresholds.h>
 #include <driver/i2c.h>
 #include <ouchat_types.h>
+#include <ouchat_utils.h>
 
 #define SENSOR_LOG_TAG "sensor"
 
@@ -22,9 +23,6 @@
 #define OUCHAT_SENSOR_DEFAULT_SDA 1
 #define OUCHAT_SENSOR_DEFAULT_SCL 2
 #define OUCHAT_SENSOR_DEFAULT_INT 3
-
-#define AVERAGE_CAT_HEIGHT 250
-#define MOTION_THRESHOLD 50
 
 //Default i2c, and sensor configs
 #define DEFAULT_I2C_CONFIG (i2c_config_t){         \
