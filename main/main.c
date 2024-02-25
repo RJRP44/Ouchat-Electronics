@@ -15,6 +15,20 @@
 
 RTC_DATA_ATTR sensor_t sensor;
 
+void side_tasks(void *arg){
+
+    //Start all task without interrupting the reads
+#if CONFIG_OUCHAT_DEBUG_LOGGER
+    TaskHandle_t xHandle = NULL;
+
+    xTaskCreatePinnedToCore(tcp_logger_task, "ouchat_logger", 16384, &sensor.calibration, 5, &xHandle, 1);
+    configASSERT(xHandle);
+#else
+#endif
+
+    vTaskDelete(NULL);
+}
+
 void app_main(void) {
 
     //Get the wakeup reason
@@ -65,11 +79,6 @@ void app_main(void) {
 
 #if CONFIG_OUCHAT_DEBUG_LOGGER
     init_tcp_logger();
-
-    TaskHandle_t xHandle = NULL;
-
-    xTaskCreatePinnedToCore(tcp_logger_task, "ouchat_logger", 16384, &sensor.calibration, 5, &xHandle, 1);
-    configASSERT(xHandle);
 #endif
 
     //Update and restart the sensor
@@ -79,14 +88,9 @@ void app_main(void) {
     VL53L8CX_ResultsData results;
     uint8_t status, ready = 0;
 
-    //Wait for the sensor to restart ranging
-    while (!ready) {
-        WaitMs(&sensor.handle.platform, 5);
-        vl53l8cx_check_data_ready(&sensor.handle, &ready);
-    }
-
     process_init();
     uint16_t empty_frames = 0;
+    bool side_task = false;
 
     while (empty_frames < 30) {
         vl53l8cx_check_data_ready(&sensor.handle, &ready);
@@ -120,7 +124,18 @@ void app_main(void) {
             if (empty_frames != 0 || status) {
                 empty_frames = status == 0 ? 0 : empty_frames + status;
             }
+
+        }else if(!side_task){
+
+            //Start the side task without interrupting the reads
+            TaskHandle_t xHandle = NULL;
+            xTaskCreatePinnedToCore(side_tasks, "ouchat_side_tasks", 4096, NULL, 3, &xHandle, 1);
+            configASSERT(xHandle);
+
+            side_task = true;
         }
+
+        WaitMs(&sensor.handle.platform, 5);
     }
 
 #if CONFIG_OUCHAT_DEBUG_LOGGER
