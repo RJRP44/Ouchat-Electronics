@@ -8,6 +8,7 @@
 #include <memory.h>
 #include <sensor.h>
 #include <calibrator.h>
+#include <api.h>
 #include "data_processor.h"
 
 static frame_t previous_frame;
@@ -59,12 +60,24 @@ static void movement_handler(tracker_t tracker, calibration_config_t calibration
     double direct_path = sqrt(pow(furthest_point->x,2)+pow(furthest_point->y - distance_wall_fov,2));
     double absolute_path = sqrt(pow(adx,2)+pow(ady,2));
 
+    TaskHandle_t xHandle = NULL;
+
     if (possible_in && (dy < -300 || absolute_path > direct_path)){
         ESP_LOGI(PROCESSOR_LOG_TAG, "\e[1;32m Inside !\e[0m");
+
+        int16_t value = 1;
+
+        xTaskCreatePinnedToCore(api_set, "ouchat_api", 4096, &value, 4, &xHandle, 1);
+        configASSERT(xHandle);
     }
 
     if (possible_out && (dy > 300 || absolute_path > direct_path)){
         ESP_LOGI(PROCESSOR_LOG_TAG, "\e[1;31m Outside !\e[0m");
+
+        int16_t value = 0;
+
+        xTaskCreatePinnedToCore(api_set, "ouchat_api", 4096, &value, 4, &xHandle, 1);
+        configASSERT(xHandle);
     }
 }
 
@@ -554,20 +567,6 @@ esp_err_t process_data(coord_t sensor_data[8][8], calibration_config_t calibrati
         average_coords[i].z = sums[i].z / current_frame.clusters[i].size;
 
         current_frame.clusters[i].coord = average_coords[i];
-
-        /*
-        if (current_frame.clusters[i].id == 0){
-            FILE *fptr;
-
-// Open a file in append mode
-            fptr = fopen("filename.txt", "a");
-
-// Append some text to the file
-            fprintf(fptr, "%f,%f,%f\n",average_coords[i].x,average_coords[i].y,average_coords[i].z);
-
-// Close the file
-            fclose(fptr);
-        }*/
     }
 
     //Calculate the variance for the standard deviation

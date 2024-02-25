@@ -10,6 +10,7 @@
 #include <data_processor.h>
 #include <logger.h>
 #include <mbedtls/base64.h>
+#include <api.h>
 
 #define LOG_TAG "ouchat"
 
@@ -25,6 +26,8 @@ void side_tasks(void *arg){
     configASSERT(xHandle);
 #else
 #endif
+
+    init_api();
 
     vTaskDelete(NULL);
 }
@@ -144,6 +147,11 @@ void app_main(void) {
     stop_tcp_logger();
 
 #endif
+
+    //Wait if the esp is requesting the api
+    if (xEventGroupGetBits(api_flags) & REQUEST_FLAG){
+        xEventGroupWaitBits(api_flags, REQUEST_DONE_FLAG, pdTRUE,pdTRUE,portMAX_DELAY);
+    }
 
     //Reset the trigger saved by the bistable 555 circuit
     reset_sensor_trigger();
