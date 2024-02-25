@@ -11,6 +11,12 @@
 #include <vl53l8cx_plugin_motion_indicator.h>
 
 typedef struct {
+    uint32_t red;
+    uint32_t green;
+    uint32_t blue;
+} color_t;
+
+typedef struct {
     uint8_t x;
     uint8_t y;
 } p_coord_t;

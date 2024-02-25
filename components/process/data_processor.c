@@ -9,6 +9,8 @@
 #include <sensor.h>
 #include <calibrator.h>
 #include <api.h>
+#include <leds.h>
+#include <led_strip.h>
 #include "data_processor.h"
 
 static frame_t previous_frame;
@@ -65,6 +67,9 @@ static void movement_handler(tracker_t tracker, calibration_config_t calibration
     if (possible_in && (dy < -300 || absolute_path > direct_path)){
         ESP_LOGI(PROCESSOR_LOG_TAG, "\e[1;32m Inside !\e[0m");
 
+        //Set the LED color
+        set_color((color_t) {.green = 50});
+
         int16_t value = 1;
 
         xTaskCreatePinnedToCore(api_set, "ouchat_api", 4096, &value, 4, &xHandle, 1);
@@ -73,6 +78,9 @@ static void movement_handler(tracker_t tracker, calibration_config_t calibration
 
     if (possible_out && (dy > 300 || absolute_path > direct_path)){
         ESP_LOGI(PROCESSOR_LOG_TAG, "\e[1;31m Outside !\e[0m");
+
+        //Set the LED color
+        set_color((color_t) {.red = 50});
 
         int16_t value = 0;
 

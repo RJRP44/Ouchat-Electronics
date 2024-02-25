@@ -11,6 +11,7 @@
 #include <logger.h>
 #include <mbedtls/base64.h>
 #include <api.h>
+#include <leds.h>
 
 #define LOG_TAG "ouchat"
 
@@ -25,9 +26,17 @@ void side_tasks(void *arg){
     xTaskCreatePinnedToCore(tcp_logger_task, "ouchat_logger", 16384, &sensor.calibration, 5, &xHandle, 1);
     configASSERT(xHandle);
 #else
+    bool status = 0;
+    wifi_init(&status);
+
+    //If not connected to the Wi-Fi cancel
+    if (!status){
+        ESP_LOGE(LOG_TAG, "Not connected to Wi-Fi...");
+    }
 #endif
 
     init_api();
+    init_leds();
 
     vTaskDelete(NULL);
 }
@@ -44,6 +53,11 @@ void app_main(void) {
     //First start
     if (wakeup_reason != ESP_SLEEP_WAKEUP_EXT0) {
 
+        init_leds();
+
+        //Set the LED color
+        set_color((color_t) {.green = 21, .red = 50});
+
         //Power on sensor and init
         sensor.handle.platform.address = VL53L8CX_DEFAULT_I2C_ADDRESS;
         sensor.handle.platform.port = I2C_NUM_1;
@@ -59,6 +73,8 @@ void app_main(void) {
         ESP_LOGI(LOG_TAG, "Starting sensor calibration");
         calibrate_sensor(&sensor);
         ESP_LOGI(LOG_TAG, "Sensor calibrated on %d points !", sensor.calibration.inliers);
+
+        set_color((color_t) {.red = 0, .green = 0, .blue = 0});
 
         //Init motion detection based on the previous calibration
         init_motion_indicator(&sensor);
