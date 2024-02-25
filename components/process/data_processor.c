@@ -322,9 +322,19 @@ esp_err_t process_data(coord_t sensor_data[8][8], calibration_config_t calibrati
             start_coord[i].y = sums[i].y / first_frame.clusters[i].size;
             start_coord[i].z = sums[i].z / first_frame.clusters[i].size;
 
-            first_frame.clusters[i].tracker.age = 0;
-            first_frame.clusters[i].tracker.entry_coord = start_coord[i];
-            first_frame.clusters[i].tracker.average_height = start_coord[i].z;
+            tracker_t *tracker = &first_frame.clusters[i].tracker;
+
+            tracker->age = 0;
+            tracker->entry_coord = start_coord[i];
+            tracker->average_height = start_coord[i].z;
+
+            tracker->maximum.x = start_coord[i].x;
+            tracker->maximum.y = start_coord[i].y;
+            tracker->maximum.z = start_coord[i].z;
+
+            tracker->minimum.x = start_coord[i].x;
+            tracker->minimum.y = start_coord[i].y;
+            tracker->minimum.z = start_coord[i].z;
         }
 
         //Calculate the variance for the standard deviation
