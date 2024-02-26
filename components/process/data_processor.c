@@ -145,7 +145,7 @@ static void frame_background_mask(frame_t *frame, calibration_config_t config, i
 
     //All point near the floor (±150mm)
     for (X_Y_FOR_LOOP) {
-        if (fabs(frame->data[x][y].coord.z - config.floor_distance) < threshold) {
+        if (fabs(frame->data[x][y].coord.z - config.floor_distance) < threshold || config.outliers[x][y] != -1) {
             frame->data[x][y].cluster_id = BACKGROUND;
             frame->background_count++;
         }

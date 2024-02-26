@@ -170,16 +170,18 @@ esp_err_t calibrate_sensor(sensor_t *sensor){
     sensor->calibration.angles.y = acos(sensor->calibration.floor.b / norm);
     sensor->calibration.angles.z = acos(sensor->calibration.floor.c / norm);
 
+    sensor->calibration.floor_distance = fabs(sensor->calibration.floor.d) / norm;
+
+    ESP_LOGI(SENSOR_LOG_TAG, "Distance to the floor : %.1f",sensor->calibration.floor_distance);
+
     //Calculate the average floor distance
     coord_t floor_data[8][8];
-    double height_sum = 0;
     correct_sensor_data(sensor, sensor->calibration.background, floor_data);
 
     for (X_Y_FOR_LOOP){
-        height_sum += floor_data[x][y].z;
+        bool is_outlier = fabs(floor_data[x][y].z - sensor->calibration.floor_distance) > BACKGROUND_THRESHOLD;
+        sensor->calibration.outliers[x][y] = is_outlier ? sensor->calibration.floor_distance : -1;
     }
-
-    sensor->calibration.floor_distance = height_sum / 64;
 
     return ESP_OK;
 }

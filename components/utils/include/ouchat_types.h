@@ -71,6 +71,7 @@ typedef struct {
     plane_t floor;
     uint8_t inliers;
     uint16_t background[8][8];
+    double outliers[8][8];
     uint16_t furthest_point;
     double floor_distance;
 } calibration_config_t;
