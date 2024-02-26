@@ -92,9 +92,8 @@ void tcp_logger_task(void *arg) {
     cJSON_AddStringToObject(packet, "cat", CONFIG_OUCHAT_CAT);
 
     size_t length;
-    unsigned char output[269];
-    mbedtls_base64_encode(output, 269, &length, (const unsigned char *) arg, sizeof(calibration_config_t));
-
+    unsigned char output[961];
+    mbedtls_base64_encode(output, 961, &length, (const unsigned char *) arg, sizeof(calibration_config_t));
     cJSON_AddStringToObject(packet, "context", (char *)output);
 
     uint16_t packet_len = strlen(cJSON_PrintUnformatted(packet));
