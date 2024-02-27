@@ -335,6 +335,8 @@ esp_err_t process_data(coord_t sensor_data[8][8], calibration_config_t calibrati
             tracker->minimum.x = start_coord[i].x;
             tracker->minimum.y = start_coord[i].y;
             tracker->minimum.z = start_coord[i].z;
+
+            first_frame.clusters[i].coord = start_coord[i];
         }
 
         //Calculate the variance for the standard deviation
