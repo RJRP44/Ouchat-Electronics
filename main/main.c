@@ -153,8 +153,6 @@ void app_main(void) {
 
             side_task = true;
         }
-
-        WaitMs(&sensor.handle.platform, 5);
     }
 
 #if CONFIG_OUCHAT_DEBUG_LOGGER

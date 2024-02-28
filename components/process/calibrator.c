@@ -11,10 +11,10 @@
 static uint8_t pixel_angles(p_coord_t coordinates, p_angles_t *angles) {
 
     //The angle is proportional to the position on the sensor
-    angles->x = (coordinates.x - 3.5)           //Get the coordinates with a (0;0) at the center
+    angles->a = (coordinates.x - 3.5)           //Get the coordinates with a (0;0) at the center
                 * (VL53L8CX_SENSOR_FOV / 7);    //The more the point is far from the center the more it is angled
 
-    angles->y = (coordinates.y - 3.5) * (VL53L8CX_SENSOR_FOV / 7);
+    angles->b = (coordinates.y - 3.5) * (VL53L8CX_SENSOR_FOV / 7);
 
     return 0;
 }
@@ -26,8 +26,8 @@ static uint8_t pixel_coordinates(coord_t *coordinates, double measure, p_coord_t
     pixel_angles(coords, &angles);
 
     //Get the coordinates
-    coordinates->x = measure * sin(angles.x * PI / 180);
-    coordinates->y = measure * sin(angles.y * PI / 180);
+    coordinates->x = measure * sin(angles.a * PI / 180);
+    coordinates->y = measure * sin(angles.b * PI / 180);
     coordinates->z = measure;
 
     return 0;
@@ -166,9 +166,9 @@ esp_err_t calibrate_sensor(sensor_t *sensor){
 
     //Calculate the angles of the floor in oder to compensate them after
     double norm = sqrt(pow(sensor->calibration.floor.a, 2) + pow(sensor->calibration.floor.b, 2) + pow(sensor->calibration.floor.c, 2));
-    sensor->calibration.angles.x = acos(sensor->calibration.floor.a / norm);
-    sensor->calibration.angles.y = acos(sensor->calibration.floor.b / norm);
-    sensor->calibration.angles.z = acos(sensor->calibration.floor.c / norm);
+    sensor->calibration.angles.x = acos(fabs(sensor->calibration.floor.a) / norm);
+    sensor->calibration.angles.y = acos(fabs(sensor->calibration.floor.b) / norm);
+    sensor->calibration.angles.z = acos(fabs(sensor->calibration.floor.c) / norm);
 
     sensor->calibration.floor_distance = fabs(sensor->calibration.floor.d) / norm;
 
@@ -199,11 +199,11 @@ esp_err_t correct_sensor_data(sensor_t *sensor, uint16_t raw_data[8][8], coord_t
         //Rotate around the z-axis
         z_rotated_coordinates.x = coordinates_sensor.x;
 
-        z_rotated_coordinates.y = cos(PI - sensor->calibration.angles.z) * coordinates_sensor.y +
-                                  sin(PI - sensor->calibration.angles.z) * coordinates_sensor.z;
+        z_rotated_coordinates.y = cos(sensor->calibration.angles.z) * coordinates_sensor.y +
+                                  sin(sensor->calibration.angles.z) * coordinates_sensor.z;
 
-        z_rotated_coordinates.z = -sin(PI - sensor->calibration.angles.z) * coordinates_sensor.y +
-                                  cos(PI - sensor->calibration.angles.z) * coordinates_sensor.z;
+        z_rotated_coordinates.z = -sin(sensor->calibration.angles.z) * coordinates_sensor.y +
+                                  cos(sensor->calibration.angles.z) * coordinates_sensor.z;
 
         //Rotate around the x-axis
         output[x][y].x = cos(PI / 2 - sensor->calibration.angles.x) * z_rotated_coordinates.x +

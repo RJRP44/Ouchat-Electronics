@@ -55,7 +55,7 @@ typedef struct {
 } frame_t;
 
 typedef struct {
-    double x, y;
+    double a, b;
 } p_angles_t;
 
 typedef struct {
