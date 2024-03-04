@@ -341,6 +341,7 @@ esp_err_t process_data(coord_t sensor_data[8][8], calibration_config_t calibrati
 
         //Calculate the variance for the standard deviation
         double variances[count];
+        memset(variances, 0, sizeof(variances));
         for (X_Y_FOR_LOOP){
 
             int16_t cluster_id = first_frame.data[x][y].cluster_id;
@@ -591,6 +592,7 @@ esp_err_t process_data(coord_t sensor_data[8][8], calibration_config_t calibrati
 
     //Calculate the variance for the standard deviation
     double variances[current_frame.clusters_count];
+    memset(variances, 0, sizeof(variances));
     for (X_Y_FOR_LOOP){
 
         int16_t cluster_id = current_frame.data[x][y].cluster_id;

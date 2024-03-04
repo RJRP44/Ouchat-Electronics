@@ -99,19 +99,22 @@ esp_err_t init_motion_indicator(sensor_t *sensor) {
 }
 
 esp_err_t sensor_update_config(sensor_t *sensor, sensor_config_t config){
-    vl53l8cx_stop_ranging(&sensor->handle);
+
+    uint8_t status = VL53L8CX_STATUS_OK;
+
+    status |= vl53l8cx_stop_ranging(&sensor->handle);
     
     //Apply the new configuration
     if (sensor->config.resolution != config.resolution){
-        vl53l8cx_set_resolution(&sensor->handle, config.resolution);
+        status |= vl53l8cx_set_resolution(&sensor->handle, config.resolution);
     }
 
     if (sensor->config.frequency != config.frequency){
-        vl53l8cx_set_ranging_frequency_hz(&sensor->handle, config.frequency);
+        status |= vl53l8cx_set_ranging_frequency_hz(&sensor->handle, config.frequency);
     }
 
     if (sensor->config.mode != config.mode){
-        vl53l8cx_set_ranging_mode(&sensor->handle, config.mode);
+        status |= vl53l8cx_set_ranging_mode(&sensor->handle, config.mode);
     }
 
     if (config.mode != VL53L8CX_RANGING_MODE_AUTONOMOUS) {
@@ -119,7 +122,7 @@ esp_err_t sensor_update_config(sensor_t *sensor, sensor_config_t config){
     }
 
     if (sensor->config.integration_time != config.integration_time){
-        vl53l8cx_set_integration_time_ms(&sensor->handle, config.integration_time);
+        status |= vl53l8cx_set_integration_time_ms(&sensor->handle, config.integration_time);
     }
 
     end:
@@ -127,15 +130,17 @@ esp_err_t sensor_update_config(sensor_t *sensor, sensor_config_t config){
     //Copy the new configuration
     memcpy(&sensor->config, &config, sizeof(config));
 
-    vl53l8cx_start_ranging(&sensor->handle);
+    status |= vl53l8cx_start_ranging(&sensor->handle);
 
-    return ESP_OK;
+    return status;
 }
 
 esp_err_t sensor_init_thresholds(sensor_t *sensor){
 
+    uint8_t status = VL53L8CX_STATUS_OK;
+
     //Stop ranging
-    vl53l8cx_stop_ranging(&sensor->handle);
+    status |= vl53l8cx_stop_ranging(&sensor->handle);
 
     //Clear old thresholds
     memset(&sensor->thresholds, 0, sizeof(sensor->thresholds));
@@ -155,13 +160,13 @@ esp_err_t sensor_init_thresholds(sensor_t *sensor){
     sensor->thresholds[63].zone_num = VL53L8CX_LAST_THRESHOLD | sensor->thresholds[63].zone_num;
 
     //Enable detection thresholds
-    vl53l8cx_set_detection_thresholds(&sensor->handle, sensor->thresholds);
-    vl53l8cx_set_detection_thresholds_enable(&sensor->handle, 1);
-    vl53l8cx_set_detection_thresholds_auto_stop(&sensor->handle, 1);
+    status |= vl53l8cx_set_detection_thresholds(&sensor->handle, sensor->thresholds);
+    status |= vl53l8cx_set_detection_thresholds_enable(&sensor->handle, 1);
+    status |= vl53l8cx_set_detection_thresholds_auto_stop(&sensor->handle, 1);
 
-    vl53l8cx_start_ranging(&sensor->handle);
+    status |= vl53l8cx_start_ranging(&sensor->handle);
 
-    return ESP_OK;
+    return status;
 }
 
 esp_err_t reset_sensor_trigger(){

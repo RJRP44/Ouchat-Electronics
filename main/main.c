@@ -4,7 +4,6 @@
 #include <vl53l8cx_api.h>
 #include <string.h>
 #include <esp_sleep.h>
-#include <nvs_flash.h>
 #include <sensor.h>
 #include <calibrator.h>
 #include <data_processor.h>
@@ -61,6 +60,10 @@ void app_main(void) {
         //Power on sensor and init
         sensor.handle.platform.address = VL53L8CX_DEFAULT_I2C_ADDRESS;
         sensor.handle.platform.port = I2C_NUM_1;
+        sensor.handle.platform.reset_gpio = OUCHAT_SENSOR_DEFAULT_RST;
+
+        gpio_set_direction(OUCHAT_SENSOR_DEFAULT_RST, GPIO_MODE_OUTPUT);
+        gpio_set_level(OUCHAT_SENSOR_DEFAULT_RST, 1);
 
         //Set the default 15Hz, 8x8 continuous config
         sensor.config = DEFAULT_VL53L8CX_CONFIG;
@@ -91,6 +94,8 @@ void app_main(void) {
         //Add interrupt pin
         esp_deep_sleep_disable_rom_logging();
         esp_sleep_enable_ext0_wakeup(OUCHAT_SENSOR_DEFAULT_INT, 0);
+
+        gpio_deep_sleep_hold_en();
 
         //Start the deep sleep
         esp_deep_sleep_start();
@@ -175,8 +180,33 @@ void app_main(void) {
     esp_sleep_enable_ext0_wakeup(OUCHAT_SENSOR_DEFAULT_INT, 0);
 
     //Stop the ranging to set the sensor in "sleep"
-    sensor_update_config(&sensor, DEFAULT_VL53L8CX_LP_CONFIG);
-    sensor_init_thresholds(&sensor);
+    status = sensor_update_config(&sensor, DEFAULT_VL53L8CX_LP_CONFIG);
+    status |= sensor_init_thresholds(&sensor);
+
+    while (status != VL53L8CX_STATUS_OK)
+    {
+        ESP_LOGE(LOG_TAG, "Sensor failed, restarting...");
+
+        //Reset the sensor
+        Reset_Sensor(&sensor.handle.platform);
+        sensor.config = DEFAULT_VL53L8CX_LP_CONFIG;
+
+        //Restart and re-init it
+        status = sensor_init(&sensor);
+        status |= vl53l8cx_start_ranging(&sensor.handle);
+
+        //Restart motion detection and thresholds
+        init_motion_indicator(&sensor);
+        status |= sensor_init_thresholds(&sensor);
+
+        WaitMs(&sensor.handle.platform, 1000);
+    }
+
+    //Make shure the sensor is powerd
+    gpio_set_direction(OUCHAT_SENSOR_DEFAULT_RST, GPIO_MODE_OUTPUT);
+    gpio_set_level(OUCHAT_SENSOR_DEFAULT_RST, 1);
+
+    gpio_deep_sleep_hold_en();
 
     ESP_LOGI(LOG_TAG, "Entering deep sleep");
 
