@@ -54,9 +54,6 @@ void app_main(void) {
 
         init_leds();
 
-        //Set the LED color
-        set_color((color_t) {.green = 21, .red = 50});
-
         //Power on sensor and init
         sensor.handle.platform.address = VL53L8CX_DEFAULT_I2C_ADDRESS;
         sensor.handle.platform.port = I2C_NUM_1;
@@ -68,7 +65,21 @@ void app_main(void) {
         //Set the default 15Hz, 8x8 continuous config
         sensor.config = DEFAULT_VL53L8CX_CONFIG;
 
-        sensor_init(&sensor);
+        esp_err_t status = sensor_init(&sensor);
+
+        while (status != ESP_OK){
+            set_color((color_t) {.blue = 26, .red = 50});
+            ESP_LOGE(LOG_TAG, "Sensor failed, restarting...");
+
+            //Reset the sensor
+            Reset_Sensor(&sensor.handle.platform);
+            status = sensor_init(&sensor);
+
+            WaitMs(&sensor.handle.platform, 1000);
+        }
+
+        //Set the LED color
+        set_color((color_t) {.green = 21, .red = 50});
 
         //Calibrate the sensor
         vl53l8cx_start_ranging(&sensor.handle);
@@ -185,6 +196,7 @@ void app_main(void) {
 
     while (status != VL53L8CX_STATUS_OK)
     {
+        set_color((color_t) {.blue = 26, .red = 50});
         ESP_LOGE(LOG_TAG, "Sensor failed, restarting...");
 
         //Reset the sensor
