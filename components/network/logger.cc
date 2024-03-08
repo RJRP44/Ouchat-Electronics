@@ -11,6 +11,7 @@
 #include <ouchat_types.h>
 #include "logger.h"
 #include "wifi.h"
+#include <string>
 
 #define LOG_TAG "ouchat-logger"
 
@@ -39,7 +40,7 @@ uint8_t tcp_log(unsigned char *data) {
     uint32_t time = esp_log_timestamp();
 
     //Add timestamp to the data
-    snprintf(buffer, buffer_size, "(%lu)%s", time, data);
+    snprintf(buffer, buffer_size, "(%lu)%p", time, data);
 
     xQueueSend(log_queue, buffer, 0);
     return 0;
@@ -54,15 +55,15 @@ uint8_t stop_tcp_logger() {
     return 0;
 }
 
-void tcp_logger_task(void *arg) {
+void tcp_logger_task(void *args) {
     char log[190];
 
-    struct sockaddr_in serv_addr;
+    struct sockaddr_in serv_addr{};
     inet_pton(AF_INET, host_ip, &serv_addr.sin_addr);
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(3010);
 
-    bool status = 0;
+    bool status = false;
     wifi_init(&status);
 
     //If not connected to the Wi-Fi cancel
@@ -78,7 +79,7 @@ void tcp_logger_task(void *arg) {
         return;
     }
 
-    if (connect(sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) != 0) {
+    if (connect(sock, reinterpret_cast<sockaddr *>(&serv_addr), sizeof(serv_addr)) != 0) {
         ESP_LOGE(LOG_TAG, "Socket connect failed errno=%d", errno);
 
         //Stop the socket
@@ -93,25 +94,23 @@ void tcp_logger_task(void *arg) {
 
     size_t length;
     unsigned char output[961];
-    mbedtls_base64_encode(output, 961, &length, (const unsigned char *) arg, sizeof(calibration_config_t));
-    cJSON_AddStringToObject(packet, "context", (char *)output);
+    mbedtls_base64_encode(output, 961, &length, static_cast<const unsigned char *>(args), sizeof(calibration_config_t));
+    cJSON_AddStringToObject(packet, "context", reinterpret_cast<char *>(output));
 
     uint16_t packet_len = strlen(cJSON_PrintUnformatted(packet));
-    char *text_packet;
-    text_packet = malloc(packet_len + 1);
-    memcpy(text_packet, cJSON_PrintUnformatted(packet), packet_len);
+    std::string text_packet;
+    text_packet.resize(packet_len);
+
+    memcpy(text_packet.data(), cJSON_PrintUnformatted(packet), packet_len);
 
     //Define the end of the string
-    *(text_packet + packet_len) = '\n';
-    *(text_packet + packet_len + 1) = '\0';
+    text_packet.append("\n");
 
     //Send the packet
-    write(sock, text_packet, strlen(text_packet));
-
-    free(text_packet);
+    write(sock, text_packet.c_str(), text_packet.size());
     cJSON_Delete(packet);
 
-    while (1) {
+    while (true) {
         unsigned int queue_length = uxQueueMessagesWaiting(log_queue);
         if (queue_length == 0 && uxQueueMessagesWaiting(deep_sleep_queue) > 0) {
 
@@ -122,7 +121,7 @@ void tcp_logger_task(void *arg) {
             close(sock);
 
             xEventGroupSetBits(logger_event_group, OUCHAT_LOG_EVENT_STOPPED);
-            vTaskDelete(NULL);
+            vTaskDelete(nullptr);
             return;
         }
         if (queue_length >= 1) {

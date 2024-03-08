@@ -49,8 +49,8 @@ void determine_floor(int pool, int need, marker chosen, int at, double calibrati
 
         for (at = 0; at < pool; at++) {
             if (chosen & (one << at)) {
-                uint8_t x = ABSCISSA_FROM_1D(at);
-                uint8_t y = ORDINATE_FROM_1D(at);
+                const auto x = ABSCISSA_FROM_1D(at);
+                const auto y = ORDINATE_FROM_1D(at);
                 pixels[point_counter] = (p_coord_t) {x, y};
                 pixel_coordinates(&points[point_counter], calibrating_dataset[x][y], pixels[point_counter]);
 
@@ -86,16 +86,17 @@ void determine_floor(int pool, int need, marker chosen, int at, double calibrati
         //For each other points calculate the distance from the plane
         for (X_Y_FOR_LOOP) {
 
-            for (int j = 0; j < 3; ++j) {
-                if (pixels[j].x == x && pixels[j].y == y) {
+            double distance;
+
+            for (auto & pixel : pixels) {
+                if (pixel.x == x && pixel.y == y) {
                     goto end;
                 }
             }
 
-
             coord_t point;
-            pixel_coordinates(&point, calibrating_dataset[x][y], (p_coord_t) {x, y});
-            double distance = fabs(plane.a * point.x + plane.b * point.y + plane.c * point.z - plane.d) /
+            pixel_coordinates(&point, calibrating_dataset[x][y], {x, y});
+            distance = fabs(plane.a * point.x + plane.b * point.y + plane.c * point.z - plane.d) /
                               sqrt(pow(plane.a, 2) + pow(plane.b, 2) + pow(plane.c, 2));
 
             if (distance < INLIER_THRESHOLD_VALUE) {
@@ -121,7 +122,7 @@ void determine_floor(int pool, int need, marker chosen, int at, double calibrati
 esp_err_t calibrate_sensor(sensor_t *sensor){
     uint16_t raw_calibration_data[OUCHAT_CALIBRATION_DATASET_SIZE][8][8];
 
-    for (int i = 0; i < OUCHAT_CALIBRATION_DATASET_SIZE; ++i) {
+    for (auto & i : raw_calibration_data) {
 
         //Check if data is available
         uint8_t is_ready = 0;
@@ -137,28 +138,28 @@ esp_err_t calibrate_sensor(sensor_t *sensor){
         VL53L8CX_ResultsData results;
         vl53l8cx_get_ranging_data(&sensor->handle, &results);
 
-        memcpy(raw_calibration_data[i], results.distance_mm, sizeof raw_calibration_data[i]);
+        memcpy(i, results.distance_mm, sizeof i);
     }
 
     //Do an average to avoid noise
     uint32_t sum[8][8] = {0};
     double calibration_data[8][8] = {0};
 
-    for (int i = 0; i < OUCHAT_CALIBRATION_DATASET_SIZE; ++i) {
+    for (const auto & i : raw_calibration_data) {
         for (X_Y_FOR_LOOP) {
-            sum[x][y] += raw_calibration_data[i][x][y];
+            sum[x][y] += i[x][y];
         }
     }
 
     for (X_Y_FOR_LOOP) {
-        calibration_data[x][y] = (double) sum[x][y] / OUCHAT_CALIBRATION_DATASET_SIZE;
-        sensor->calibration.background[x][y] = (uint16_t) round(calibration_data[x][y]);
+        calibration_data[x][y] = static_cast<double>(sum[x][y]) / OUCHAT_CALIBRATION_DATASET_SIZE;
+        sensor->calibration.background[x][y] = static_cast<uint16_t>(round(calibration_data[x][y]));
 
-        if (sensor->calibration.furthest_point > (uint16_t) round(calibration_data[x][y])){
+        if (sensor->calibration.furthest_point > static_cast<uint16_t>(round(calibration_data[x][y]))){
             continue;
         }
 
-        sensor->calibration.furthest_point = (uint16_t) round(calibration_data[x][y]);
+        sensor->calibration.furthest_point = static_cast<uint16_t>(round(calibration_data[x][y]));
     }
 
     sensor->calibration.inliers = 0;
@@ -189,12 +190,12 @@ esp_err_t calibrate_sensor(sensor_t *sensor){
 esp_err_t correct_sensor_data(sensor_t *sensor, uint16_t raw_data[8][8], coord_t output[8][8]){
 
     //For each point, convert the sensor's measure to a Galilean reference frame coordinates
-    for (int x = 0, y = 0; x < 8 && y < 8; y = (y + 1) % 8, x += y ? 0 : 1) {
+    for (X_Y_FOR_LOOP) {
 
         coord_t coordinates_sensor, z_rotated_coordinates;
         uint16_t measure = raw_data[x][y];
 
-        pixel_coordinates(&coordinates_sensor, measure, (p_coord_t) {x, y});
+        pixel_coordinates(&coordinates_sensor, measure, {x, y});
 
         //Rotate around the z-axis
         z_rotated_coordinates.x = coordinates_sensor.x;

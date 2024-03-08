@@ -5,68 +5,95 @@
 #ifndef OUCHAT_DATA_PREPROCESSING_OUCHAT_UNITS_H
 #define OUCHAT_DATA_PREPROCESSING_OUCHAT_UNITS_H
 
-#include <stdint.h>
+#include <cstdint>
+#include <vector>
 #include <vl53l8cx_api.h>
 #include <vl53l8cx_plugin_detection_thresholds.h>
 #include <vl53l8cx_plugin_motion_indicator.h>
 
-typedef struct {
+typedef struct
+{
     uint32_t red;
     uint32_t green;
     uint32_t blue;
 } color_t;
 
-typedef struct {
+typedef struct
+{
     uint8_t x;
     uint8_t y;
 } p_coord_t;
 
-typedef struct {
+typedef struct
+{
     double x, y, z;
+
+    [[nodiscard]] bool empty() const
+    {
+        return x == 0 && y == 0 && z == 0;
+    }
 } coord_t;
 
-typedef struct {
+typedef struct
+{
     coord_t coord;
     int16_t cluster_id;
 } point_t;
 
-typedef struct {
+typedef struct
+{
+    coord_t maximum;
+    coord_t minimum;
+} bounding_box_t;
+
+typedef struct
+{
     uint16_t age;
     coord_t entry_coord;
     coord_t exit_coord;
+    bounding_box_t entry_box;
+    bounding_box_t exit_box;
     double average_deviation;
     double average_height;
+    double average_size;
+    uint8_t maximum_size;
     coord_t maximum;
     coord_t minimum;
 } tracker_t;
 
-typedef struct {
+typedef struct
+{
     int16_t id;
     uint8_t size;
     tracker_t tracker;
     coord_t coord;
+    bounding_box_t box{};
 } cluster_t;
 
-typedef struct {
-    point_t data[8][8];
-    int16_t clusters_count;
-    cluster_t *clusters;
+typedef struct
+{
+    point_t data[8][8]{};
+    std::vector<cluster_t> clusters{};
     int8_t background_count;
 } frame_t;
 
-typedef struct {
+typedef struct
+{
     double a, b;
 } p_angles_t;
 
-typedef struct {
+typedef struct
+{
     double a, b, c, d;
 } plane_t;
 
-typedef struct {
+typedef struct
+{
     double x, y, z;
 } plane_angles_t;
 
-typedef struct {
+typedef struct
+{
     plane_angles_t angles;
     plane_t floor;
     uint8_t inliers;
@@ -76,14 +103,16 @@ typedef struct {
     double floor_distance;
 } calibration_config_t;
 
-typedef struct{
+typedef struct
+{
     uint8_t resolution;
     uint8_t frequency;
     uint8_t mode;
     uint32_t integration_time;
 } sensor_config_t;
 
-typedef struct {
+typedef struct
+{
     VL53L8CX_Configuration handle;
     sensor_config_t config;
     calibration_config_t calibration;

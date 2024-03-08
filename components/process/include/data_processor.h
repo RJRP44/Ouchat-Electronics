@@ -16,7 +16,7 @@
 #define PROCESSOR_LOG_TAG "processor"
 
 esp_err_t process_init();
-esp_err_t print_frame(frame_t frame);
+esp_err_t print_frame(const frame_t& frame);
 esp_err_t process_data(coord_t sensor_data[8][8], calibration_config_t calibration);
 
 #endif //OUCHAT_ELECTRONICS_DATA_PROCESSOR_H

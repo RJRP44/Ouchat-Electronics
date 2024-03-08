@@ -169,13 +169,14 @@ esp_err_t sensor_init_thresholds(sensor_t *sensor){
     return status;
 }
 
-esp_err_t reset_sensor_trigger(){
-    gpio_set_direction(4,GPIO_MODE_OUTPUT);
-    gpio_set_level(4,1);
+esp_err_t reset_sensor_trigger(gpio_num_t gpio)
+{
+    gpio_set_direction(gpio, GPIO_MODE_OUTPUT);
+    gpio_set_level(gpio, 1);
 
     vTaskDelay(100 / portTICK_PERIOD_MS);
 
-    gpio_set_level(4,0);
+    gpio_set_level(gpio, 0);
 
     return ESP_OK;
 }

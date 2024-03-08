@@ -2,7 +2,6 @@
 #include <driver/i2c.h>
 #include <sdkconfig.h>
 #include <vl53l8cx_api.h>
-#include <string.h>
 #include <esp_sleep.h>
 #include <sensor.h>
 #include <calibrator.h>
@@ -20,7 +19,7 @@ void side_tasks(void *arg){
 
     //Start all task without interrupting the reads
 #if CONFIG_OUCHAT_DEBUG_LOGGER
-    TaskHandle_t xHandle = NULL;
+    TaskHandle_t xHandle = nullptr;
 
     xTaskCreatePinnedToCore(tcp_logger_task, "ouchat_logger", 16384, &sensor.calibration, 5, &xHandle, 1);
     configASSERT(xHandle);
@@ -37,14 +36,13 @@ void side_tasks(void *arg){
     init_api();
     init_leds();
 
-    vTaskDelete(NULL);
+    vTaskDelete(nullptr);
 }
 
-void app_main(void) {
+extern "C" void app_main(void) {
 
     //Get the wakeup reason
-    esp_sleep_wakeup_cause_t wakeup_reason;
-    wakeup_reason = esp_sleep_get_wakeup_cause();
+    esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
 
     //Apply, init the configuration to the bus
     init_i2c(I2C_NUM_1, DEFAULT_I2C_CONFIG);
@@ -68,7 +66,7 @@ void app_main(void) {
         esp_err_t status = sensor_init(&sensor);
 
         while (status != ESP_OK){
-            set_color((color_t) {.blue = 26, .red = 50});
+            set_color({ .red = 50, .blue = 26});
             ESP_LOGE(LOG_TAG, "Sensor failed, restarting...");
 
             //Reset the sensor
@@ -79,7 +77,7 @@ void app_main(void) {
         }
 
         //Set the LED color
-        set_color((color_t) {.green = 21, .red = 50});
+        set_color({.red = 50, .green = 21});
 
         //Calibrate the sensor
         vl53l8cx_start_ranging(&sensor.handle);
@@ -88,13 +86,13 @@ void app_main(void) {
         calibrate_sensor(&sensor);
         ESP_LOGI(LOG_TAG, "Sensor calibrated on %d points !", sensor.calibration.inliers);
 
-        set_color((color_t) {.red = 0, .green = 0, .blue = 0});
+        set_color({.red = 0, .green = 0, .blue = 0});
 
         //Init motion detection based on the previous calibration
         init_motion_indicator(&sensor);
 
         //Reset the trigger saved by the bistable 555 circuit
-        reset_sensor_trigger();
+        reset_sensor_trigger(OUCHAT_SENSOR_DEFAULT_RST_TRIGGER);
 
         //Stop the ranging to set the sensor in "sleep"
         sensor_update_config(&sensor, DEFAULT_VL53L8CX_LP_CONFIG);
@@ -151,7 +149,7 @@ void app_main(void) {
             size_t length;
             unsigned char output[190];
 
-            mbedtls_base64_encode(output, 190, &length, (const unsigned char *) results.distance_mm, sizeof (results.distance_mm));
+            mbedtls_base64_encode(output, 190, &length, reinterpret_cast<const unsigned char *>(results.distance_mm), sizeof (results.distance_mm));
             tcp_log(output);
 
 #endif
@@ -163,8 +161,8 @@ void app_main(void) {
         }else if(!side_task){
 
             //Start the side task without interrupting the reads
-            TaskHandle_t xHandle = NULL;
-            xTaskCreatePinnedToCore(side_tasks, "ouchat_side_tasks", 4096, NULL, 3, &xHandle, 1);
+            TaskHandle_t xHandle = nullptr;
+            xTaskCreatePinnedToCore(side_tasks, "ouchat_side_tasks", 4096, nullptr, 3, &xHandle, 1);
             configASSERT(xHandle);
 
             side_task = true;
@@ -184,7 +182,7 @@ void app_main(void) {
     }
 
     //Reset the trigger saved by the bistable 555 circuit
-    reset_sensor_trigger();
+    reset_sensor_trigger(OUCHAT_SENSOR_DEFAULT_RST_TRIGGER);
 
     //Add interrupt pin
     esp_deep_sleep_disable_rom_logging();
@@ -196,7 +194,7 @@ void app_main(void) {
 
     while (status != VL53L8CX_STATUS_OK)
     {
-        set_color((color_t) {.blue = 26, .red = 50});
+        set_color({.red = 50, .blue = 26});
         ESP_LOGE(LOG_TAG, "Sensor failed, restarting...");
 
         //Reset the sensor

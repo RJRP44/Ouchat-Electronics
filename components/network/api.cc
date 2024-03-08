@@ -2,10 +2,10 @@
 // Created by Romain on 25/02/2024.
 //
 
+#include <string>
 #include <esp_wifi.h>
 #include <esp_log.h>
 #include <esp_http_client.h>
-#include <math.h>
 #include "api.h"
 
 #define WEB_SERVER "v2.api.ouchat.fr"
@@ -20,19 +20,18 @@ esp_err_t init_api(){
     return ESP_OK;
 }
 
-void api_set(void *arg) {
+void api_set(void *args) {
 
-    int16_t value = *(int16_t *)arg;
+    int16_t value = *static_cast<int16_t*>(args);
 
     xEventGroupSetBits(api_flags, REQUEST_FLAG);
     xEventGroupClearBits(api_flags, REQUEST_DONE_FLAG);
 
-    char *request = malloc(sizeof(SET_WEB_URL) + (uint8_t) ceil(value / 10.0));
-    sprintf(request, "%s%d", SET_WEB_URL, value);
+    std::string request = SET_WEB_URL + value;
 
     esp_http_client_config_t client_config = {
-            .url = request,
-            .cert_pem = (char *) ouchat_api_cert
+            .url = request.c_str(),
+            .cert_pem = reinterpret_cast<const char*>(ouchat_api_cert)
     };
 
     esp_http_client_handle_t client = esp_http_client_init(&client_config);
@@ -44,5 +43,5 @@ void api_set(void *arg) {
     esp_http_client_close(client);
 
     xEventGroupClearBits(api_flags, REQUEST_FLAG);
-    vTaskDelete(NULL);
+    vTaskDelete(nullptr);
 }
