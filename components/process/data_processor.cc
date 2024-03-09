@@ -35,9 +35,16 @@ static void movement_handler(tracker_t tracker, const calibration_config_t& cali
     input.end_y = static_cast<float>(end->y);
     input.end_z = static_cast<float>(end->z);
 
-    input.displacement_x = static_cast<float>(start->x - end->x);
-    input.displacement_y = static_cast<float>(start->y - end->y);
-    input.displacement_z = static_cast<float>(start->z - end->z);
+    double dx = start->x - end->x;
+    double dy = start->y - end->y;
+    double dz = start->z - end->z;
+    input.displacement_x = static_cast<float>(dx);
+    input.displacement_y = static_cast<float>(dy);
+    input.displacement_z = static_cast<float>(dz);
+
+    if((dx == 0) && (dy == 0) & (dz == 0)){
+        return;
+    }
 
     input.average_height = static_cast<float>(tracker.average_height);
     input.average_deviation = static_cast<float>(tracker.average_deviation);
@@ -52,14 +59,14 @@ static void movement_handler(tracker_t tracker, const calibration_config_t& cali
 
     bounding_box_t* entry = &tracker.entry_box;
     input.entry_box_max_x = static_cast<float>(entry->maximum.x);
-    input.entry_box_max_y = static_cast<float>(entry->maximum.x);
-    input.entry_box_min_x = static_cast<float>(entry->minimum.y);
+    input.entry_box_max_y = static_cast<float>(entry->maximum.y);
+    input.entry_box_min_x = static_cast<float>(entry->minimum.x);
     input.entry_box_min_y = static_cast<float>(entry->minimum.y);
 
     bounding_box_t* exit = &tracker.exit_box;
     input.exit_box_max_x = static_cast<float>(exit->maximum.x);
-    input.exit_box_max_y = static_cast<float>(exit->maximum.x);
-    input.exit_box_min_x = static_cast<float>(exit->minimum.y);
+    input.exit_box_max_y = static_cast<float>(exit->maximum.y);
+    input.exit_box_min_x = static_cast<float>(exit->minimum.x);
     input.exit_box_min_y = static_cast<float>(exit->minimum.y);
 
     ai::result result;
