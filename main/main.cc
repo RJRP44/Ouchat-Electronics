@@ -1,3 +1,4 @@
+#include <ai.h>
 #include <esp_log.h>
 #include <driver/i2c.h>
 #include <sdkconfig.h>
@@ -10,10 +11,13 @@
 #include <mbedtls/base64.h>
 #include <api.h>
 #include <leds.h>
+#include <model.h>
 
 #define LOG_TAG "ouchat"
 
 RTC_DATA_ATTR sensor_t sensor;
+
+using namespace ouchat;
 
 void side_tasks(void *arg){
 
@@ -35,6 +39,8 @@ void side_tasks(void *arg){
 
     init_api();
     init_leds();
+
+    ai::interpreter::init(ai::model);
 
     vTaskDelete(nullptr);
 }

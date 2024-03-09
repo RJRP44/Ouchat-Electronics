@@ -6,7 +6,7 @@
 #define OUCHAT_ELECTRONICS_DATA_PROCESSOR_H
 
 #include <esp_err.h>
-#include <ouchat_types.h>
+#include <types.h>
 
 #define UNDEFINED (-1)
 #define BACKGROUND (-2)

@@ -6,7 +6,7 @@
 #define OUCHAT_ELECTRONICS_CALIBRATOR_H
 
 #include <unistd.h>
-#include <ouchat_types.h>
+#include <types.h>
 #include <sensor.h>
 #include <assert.h>
 #include <math.h>

@@ -10,65 +10,65 @@
 #include <api.h>
 #include <leds.h>
 #include <led_strip.h>
-#include <ouchat_utils.h>
+#include <utils.h>
+#include <ai.h>
 
 #include "data_processor.h"
-
 
 static frame_t previous_frame;
 static uint8_t* current_size_map[8][8];
 
+using namespace ouchat;
+
 static void movement_handler(tracker_t tracker, const calibration_config_t& calibration)
 {
+    //Prepare all the input data for tha ai
+    ai::model_input input{};
+
     coord_t* start = &tracker.entry_coord;
+    input.start_x = static_cast<float>(start->x);
+    input.start_y = static_cast<float>(start->y);
+    input.start_z = static_cast<float>(start->z);
+
     coord_t* end = &tracker.exit_coord;
-    const double dx = start->x - end->x;
-    const double dy = start->y - end->y;
-    const double dz = start->z - end->z;
+    input.end_x = static_cast<float>(end->x);
+    input.end_y = static_cast<float>(end->y);
+    input.end_z = static_cast<float>(end->z);
+
+    input.displacement_x = static_cast<float>(start->x - end->x);
+    input.displacement_y = static_cast<float>(start->y - end->y);
+    input.displacement_z = static_cast<float>(start->z - end->z);
+
+    input.average_height = static_cast<float>(tracker.average_height);
+    input.average_deviation = static_cast<float>(tracker.average_deviation);
+    input.floor_distance = static_cast<float>(calibration.floor_distance);
 
     coord_t* maximum = &tracker.maximum;
     coord_t* minimum = &tracker.minimum;
-    const double adx = maximum->x - minimum->x;
-    const double ady = maximum->y - minimum->y;
+    input.absolute_displacement_x = static_cast<float>(maximum->x - minimum->x);
+    input.absolute_displacement_y = static_cast<float>(maximum->y - minimum->y);
 
-    if (dx == 0 && dy == 0 && dz == 0)
-    {
-        return;
-    }
+    input.average_size = static_cast<float>(tracker.average_size);
 
-    //Check if the exit of the fov is throw the cat flap
-    bool possible_out = sqrt(pow(tracker.exit_coord.x, 2) + pow(tracker.exit_coord.y, 2)) < CAT_FLAP_RADIUS && dy > 0;
+    bounding_box_t* entry = &tracker.entry_box;
+    input.entry_box_max_x = static_cast<float>(entry->maximum.x);
+    input.entry_box_max_y = static_cast<float>(entry->maximum.x);
+    input.entry_box_min_x = static_cast<float>(entry->minimum.y);
+    input.entry_box_min_y = static_cast<float>(entry->minimum.y);
 
-    //Check if the entry of the fov is throw the cat flap
-    bool possible_in = tracker.entry_coord.x < CAT_FLAP_RADIUS && dy < 0;
+    bounding_box_t* exit = &tracker.exit_box;
+    input.exit_box_max_x = static_cast<float>(exit->maximum.x);
+    input.exit_box_max_y = static_cast<float>(exit->maximum.x);
+    input.exit_box_min_x = static_cast<float>(exit->minimum.y);
+    input.exit_box_min_y = static_cast<float>(exit->minimum.y);
 
-    if (possible_out == possible_in)
-    {
-        return;
-    }
+    ai::result result;
 
-    //Cat height
-    if (calibration.floor_distance - tracker.average_height > MAX_CAT_HEIGHT)
-    {
-        return;
-    }
-
-    //Average deviation
-    if (tracker.average_deviation > 50)
-    {
-        return;
-    }
-
-    coord_t* furthest_point = possible_out ? &tracker.entry_coord : &tracker.exit_coord;
-
-    //The distance between the start of the FOV and the cat flap
-    double distance_wall_fov = tan(calibration.angles.z + VL53L8CX_SENSOR_FOV / 2 * PI / 180) * -calibration.floor_distance;
-    double direct_path = sqrt(pow(furthest_point->x, 2) + pow(furthest_point->y - distance_wall_fov, 2));
-    double absolute_path = sqrt(pow(adx, 2) + pow(ady, 2));
+    ai::interpreter::predict(input, &result);
 
     TaskHandle_t xHandle = nullptr;
 
-    if (possible_in && (dy < -300 || absolute_path > direct_path))
+    if (result == ai::INSIDE)
     {
         ESP_LOGI(PROCESSOR_LOG_TAG, "\e[1;32m Inside !\e[0m");
 
@@ -81,7 +81,7 @@ static void movement_handler(tracker_t tracker, const calibration_config_t& cali
         configASSERT(xHandle);
     }
 
-    if (possible_out && (dy > 300 || absolute_path > direct_path))
+    if (result == ai::OUTSIDE)
     {
         ESP_LOGI(PROCESSOR_LOG_TAG, "\e[1;31m Outside !\e[0m");
 
@@ -406,7 +406,7 @@ esp_err_t process_data(coord_t sensor_data[8][8], calibration_config_t calibrati
             sums[index].z += coord.z;
 
             //Set tracker bounding box
-            bounding_box_t *box = &first_frame.clusters[index].tracker.entry_box;
+            bounding_box_t* box = &first_frame.clusters[index].tracker.entry_box;
 
             //Init if nesscary the bounding boxes
             if (box->maximum.empty() && box->minimum.empty())
@@ -695,7 +695,7 @@ esp_err_t process_data(coord_t sensor_data[8][8], calibration_config_t calibrati
         sums[index].z += coord.z;
 
         //Set tracker bounding box
-        bounding_box_t *box = &current_frame.clusters[index].box;
+        bounding_box_t* box = &current_frame.clusters[index].box;
 
         //Init if nesscary the bounding boxes
         if (box->maximum.empty() && box->minimum.empty())

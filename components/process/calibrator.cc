@@ -4,8 +4,8 @@
 
 #include "include/calibrator.h"
 #include <vl53l8cx_api.h>
-#include <ouchat_utils.h>
-#include <ouchat_types.h>
+#include <utils.h>
+#include <types.h>
 #include <memory.h>
 
 static uint8_t pixel_angles(p_coord_t coordinates, p_angles_t *angles) {

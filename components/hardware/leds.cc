@@ -3,7 +3,7 @@
 //
 
 #include <esp_err.h>
-#include <ouchat_types.h>
+#include <types.h>
 #include "leds.h"
 
 led_strip_handle_t led_strip;

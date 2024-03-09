@@ -8,7 +8,7 @@
 #include <esp_log.h>
 #include <cJSON.h>
 #include <mbedtls/base64.h>
-#include <ouchat_types.h>
+#include <types.h>
 #include "logger.h"
 #include "wifi.h"
 #include <string>

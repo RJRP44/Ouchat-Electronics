@@ -8,10 +8,9 @@
 #include <esp_err.h>
 #include <esp_log.h>
 #include <vl53l8cx_api.h>
-#include <vl53l8cx_plugin_detection_thresholds.h>
 #include <driver/i2c.h>
-#include <ouchat_types.h>
-#include <ouchat_utils.h>
+#include <types.h>
+#include <utils.h>
 
 #define SENSOR_LOG_TAG "sensor"
 

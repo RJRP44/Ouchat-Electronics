@@ -4,7 +4,7 @@
 
 #include "include/sensor.h"
 #include "vl53l8cx_plugin_motion_indicator.h"
-#include <ouchat_types.h>
+#include <types.h>
 
 esp_err_t init_i2c(i2c_port_t port, i2c_config_t config) {
 

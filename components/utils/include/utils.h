@@ -16,4 +16,16 @@
 #define AVERAGE_CAT_HEIGHT 250
 #define MOTION_THRESHOLD 50
 
+namespace ouchat {
+
+    class utils {
+    public :
+        static float normalize(float x, float min, float max);
+
+        static float denormalize(float n, float min, float max);
+    };
+
+
+} // ouchat
+
 #endif //OUCHAT_ELECTRONICS_OUCHAT_UTILS_H
