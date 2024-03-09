@@ -32,17 +32,13 @@ uint8_t init_tcp_logger() {
     return 0;
 }
 
-uint8_t tcp_log(unsigned char *data) {
+uint8_t tcp_log(std::string data) {
 
-    //12 for timestamp + 172 for base64 data + \0
-    size_t buffer_size = 12 + 172 + 1;
-    char buffer [buffer_size];
+    //Add the timestamp before the data
     uint32_t time = esp_log_timestamp();
+    data.insert(0, "(" + std::to_string(time) + ")");
 
-    //Add timestamp to the data
-    snprintf(buffer, buffer_size, "(%lu)%p", time, data);
-
-    xQueueSend(log_queue, buffer, 0);
+    xQueueSend(log_queue, data.c_str(), 0);
     return 0;
 }
 
@@ -56,7 +52,6 @@ uint8_t stop_tcp_logger() {
 }
 
 void tcp_logger_task(void *args) {
-    char log[190];
 
     struct sockaddr_in serv_addr{};
     inet_pton(AF_INET, host_ip, &serv_addr.sin_addr);
@@ -125,8 +120,11 @@ void tcp_logger_task(void *args) {
             return;
         }
         if (queue_length >= 1) {
-            xQueueReceive(log_queue, log, 0);
-            if (write(sock, log, strlen(log)) < 0) {
+            std::string log;
+            log.resize(OUCHAT_LOG_SIZE);
+
+            xQueueReceive(log_queue, log.data(), 0);
+            if (write(sock, log.c_str(), log.size()) < 0) {
                 ESP_LOGE(LOG_TAG, "Send failed...");
 
                 //Stop the socket

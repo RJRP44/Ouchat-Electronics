@@ -147,10 +147,11 @@ extern "C" void app_main(void) {
 
             //Use base 64 to save the raw data
             size_t length;
-            unsigned char output[190];
+            std::string log;
+            log.resize(OUCHAT_LOG_SIZE);
 
-            mbedtls_base64_encode(output, 190, &length, reinterpret_cast<const unsigned char *>(results.distance_mm), sizeof (results.distance_mm));
-            tcp_log(output);
+            mbedtls_base64_encode(reinterpret_cast<unsigned char*>(log.data()), log.size(), &length, reinterpret_cast<const unsigned char*>(results.distance_mm),sizeof (results.distance_mm));
+            tcp_log(log);
 
 #endif
 

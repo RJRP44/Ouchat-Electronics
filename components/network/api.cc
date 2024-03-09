@@ -27,12 +27,11 @@ void api_set(void *args) {
     xEventGroupSetBits(api_flags, REQUEST_FLAG);
     xEventGroupClearBits(api_flags, REQUEST_DONE_FLAG);
 
-    std::string request = SET_WEB_URL + value;
+    std::string request = SET_WEB_URL + std::to_string(value);
 
-    esp_http_client_config_t client_config = {
-            .url = request.c_str(),
-            .cert_pem = reinterpret_cast<const char*>(ouchat_api_cert)
-    };
+    esp_http_client_config_t client_config{};
+    client_config.url = request.c_str();
+    client_config.cert_pem = reinterpret_cast<const char*>(ouchat_api_cert);
 
     esp_http_client_handle_t client = esp_http_client_init(&client_config);
     esp_err_t err = esp_http_client_perform(client);
