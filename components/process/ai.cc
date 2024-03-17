@@ -6,6 +6,7 @@
 #include "ai.h"
 
 #include <esp_log.h>
+#include <model.h>
 
 using namespace ouchat;
 
@@ -27,8 +28,13 @@ namespace ouchat::ai
         }
 
         //Add the fully connected layer
-        static tflite::MicroMutableOpResolver<1> resolver;
+        static tflite::MicroMutableOpResolver<2> resolver;
         if (resolver.AddFullyConnected() != kTfLiteOk)
+        {
+            return ESP_FAIL;
+        }
+
+        if (resolver.AddSoftmax() != kTfLiteOk)
         {
             return ESP_FAIL;
         }
@@ -41,6 +47,8 @@ namespace ouchat::ai
             ESP_LOGE(tag, "Failed to allocate tensors");
             return ESP_FAIL;
         }
+
+        ESP_LOGI(tag, "Oucha²i version : %f", OUCHA2I_VERSION);
 
         return ESP_OK;
     }
@@ -57,14 +65,27 @@ namespace ouchat::ai
             return ESP_FAIL;
         }
 
-        float result = utils::denormalize(interpreter::micro_interpreter->output(0)->data.f[0],-1,1);
-        ESP_LOGI(tag, "Prediction : %f",result);
+        float outside = interpreter::micro_interpreter->output(0)->data.f[0];
+        float inside = interpreter::micro_interpreter->output(0)->data.f[2];
+        float other = interpreter::micro_interpreter->output(0)->data.f[1];
 
-        if (abs(result) > 1.5){
-            *output = OTHER;
+        std::cout << "Predictions : {" << outside << ";" << inside << ";" << other << "}" << std::endl;
+
+        if (roundf(outside) == 1.0F && roundf(inside) == 0.0F && roundf(other) == 0.0F)
+        {
+            *output = OUTSIDE;
+
+            return ESP_OK;
         }
 
-        *output = ai::result(roundf(result));
+        if (roundf(outside) == 0.0F && roundf(inside) == 1.0F && roundf(other) == 0.0F)
+        {
+            *output = INSIDE;
+
+            return ESP_OK;
+        }
+
+        *output = OTHER;
 
         return ESP_OK;
     }
