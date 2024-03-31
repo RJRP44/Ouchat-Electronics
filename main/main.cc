@@ -104,6 +104,16 @@ extern "C" void app_main(void) {
         sensor_update_config(&sensor, DEFAULT_VL53L8CX_LP_CONFIG);
         sensor_init_thresholds(&sensor);
 
+        //Clear the queue to allow Autonomous mode
+        VL53L8CX_ResultsData results;
+        uint8_t ready = 0;
+
+        while (!ready) {
+            vl53l8cx_check_data_ready(&sensor.handle, &ready);
+        }
+
+        vl53l8cx_get_ranging_data(&sensor.handle, &results);
+
         ESP_LOGI(LOG_TAG, "Entering deep sleep");
 
         //Add interrupt pin
@@ -224,6 +234,15 @@ extern "C" void app_main(void) {
     gpio_set_level(OUCHAT_SENSOR_DEFAULT_RST, 1);
 
     gpio_deep_sleep_hold_en();
+
+    //Clear the queue to allow Autonomous mode
+    ready = 0;
+
+    while (!ready) {
+        vl53l8cx_check_data_ready(&sensor.handle, &ready);
+    }
+
+    vl53l8cx_get_ranging_data(&sensor.handle, &results);
 
     ESP_LOGI(LOG_TAG, "Entering deep sleep");
 

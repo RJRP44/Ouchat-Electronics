@@ -46,7 +46,7 @@
         .resolution = VL53L8CX_RESOLUTION_8X8,              \
         .frequency = 5,                                     \
         .mode = VL53L8CX_RANGING_MODE_AUTONOMOUS,           \
-        .integration_time = 10,                             \
+        .integration_time = 5,                             \
 }
 
 esp_err_t init_i2c(i2c_port_t port, i2c_config_t config);
