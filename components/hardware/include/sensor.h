@@ -8,7 +8,7 @@
 #include <esp_err.h>
 #include <esp_log.h>
 #include <vl53l8cx_api.h>
-#include <driver/i2c.h>
+#include <driver/i2c_master.h>
 #include <types.h>
 #include <utils.h>
 
@@ -26,15 +26,22 @@
 #define OUCHAT_SENSOR_DEFAULT_RST GPIO_NUM_5
 
 //Default i2c, and sensor configs
-#define DEFAULT_I2C_CONFIG {                            \
-        .mode = I2C_MODE_MASTER,                        \
-        .sda_io_num = OUCHAT_SENSOR_DEFAULT_SDA,        \
-        .scl_io_num = OUCHAT_SENSOR_DEFAULT_SCL,        \
-        .sda_pullup_en = GPIO_PULLUP_ENABLE,            \
-        .scl_pullup_en = GPIO_PULLUP_ENABLE,            \
-        .master = {.clk_speed = I2C_DEFAULT_CLK_SPEED}, \
-        .clk_flags = 0,                                 \
+#define DEFAULT_I2C_BUS_CONFIG {                            \
+        .i2c_port = I2C_NUM_1,                              \
+        .sda_io_num = OUCHAT_SENSOR_DEFAULT_SDA,                           \
+        .scl_io_num = OUCHAT_SENSOR_DEFAULT_SCL,                           \
+        .clk_source = I2C_CLK_SRC_DEFAULT,                  \
+        .glitch_ignore_cnt = 7,                             \
+        .intr_priority = 0,                                 \
+        .trans_queue_depth = 0,                             \
+        .flags{.enable_internal_pullup = true}              \
 }
+
+#define DEFAULT_I2C_SENSOR_CONFIG {                         \
+        .dev_addr_length = I2C_ADDR_BIT_LEN_7,              \
+        .device_address = VL53L8CX_DEFAULT_I2C_ADDRESS >> 1,\
+        .scl_speed_hz = VL53L8CX_MAX_CLK_SPEED,             \
+};
 
 #define DEFAULT_VL53L8CX_CONFIG {                           \
         .resolution = VL53L8CX_RESOLUTION_8X8,              \
@@ -49,7 +56,6 @@
         .integration_time = 5,                             \
 }
 
-esp_err_t init_i2c(i2c_port_t port, i2c_config_t config);
 esp_err_t sensor_init(sensor_t *sensor);
 esp_err_t init_motion_indicator(sensor_t *sensor);
 esp_err_t sensor_update_config(sensor_t *sensor, sensor_config_t config);

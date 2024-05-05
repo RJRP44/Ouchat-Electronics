@@ -6,15 +6,6 @@
 #include "vl53l8cx_plugin_motion_indicator.h"
 #include <types.h>
 
-esp_err_t init_i2c(i2c_port_t port, i2c_config_t config) {
-
-    //Initialize the i2c bus
-    i2c_param_config(port, &config);
-    i2c_set_timeout(port, I2C_DEFAULT_TIMEOUT);
-
-    return i2c_driver_install(port, config.mode, 0, 0, 0);
-}
-
 esp_err_t sensor_init(sensor_t *sensor) {
 
     //Send the configuration to the sensor

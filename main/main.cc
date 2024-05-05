@@ -1,6 +1,6 @@
 #include <ai.h>
 #include <esp_log.h>
-#include <driver/i2c.h>
+#include <driver/i2c_master.h>
 #include <sdkconfig.h>
 #include <vl53l8cx_api.h>
 #include <esp_sleep.h>
@@ -50,8 +50,14 @@ extern "C" void app_main(void) {
     //Get the wakeup reason
     esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
 
-    //Apply, init the configuration to the bus
-    init_i2c(I2C_NUM_1, DEFAULT_I2C_CONFIG);
+    //Apply the configuration to the i²c bus
+    i2c_master_bus_handle_t bus_handle;
+    i2c_master_bus_config_t i2c_config = DEFAULT_I2C_BUS_CONFIG;
+    i2c_new_master_bus(&i2c_config, &bus_handle);
+
+    //Register the device
+    i2c_device_config_t dev_config = DEFAULT_I2C_SENSOR_CONFIG;
+    i2c_master_bus_add_device(bus_handle, &dev_config, &sensor.handle.platform.handle);
 
     //First start
     if (wakeup_reason != ESP_SLEEP_WAKEUP_EXT0) {
@@ -60,7 +66,7 @@ extern "C" void app_main(void) {
 
         //Power on sensor and init
         sensor.handle.platform.address = VL53L8CX_DEFAULT_I2C_ADDRESS;
-        sensor.handle.platform.port = I2C_NUM_1;
+        sensor.handle.platform.bus_config = DEFAULT_I2C_BUS_CONFIG;
         sensor.handle.platform.reset_gpio = OUCHAT_SENSOR_DEFAULT_RST;
 
         gpio_set_direction(OUCHAT_SENSOR_DEFAULT_RST, GPIO_MODE_OUTPUT);

@@ -1,4 +1,4 @@
 dependencies:
-  rjrp44/vl53l8cx: ">=1.2.0"
+  rjrp44/vl53l8cx: "^2.0.1"
   espressif/led_strip: "^2.3.0"
   espressif/esp-tflite-micro: "*"
