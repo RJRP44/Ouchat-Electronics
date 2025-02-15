@@ -11,7 +11,12 @@
 #define OUCHAT_LOG_SIZE 190
 #define OUCHAT_LOG_QUEUE_SIZE 200
 
+#if CONFIG_OUCHAT_DEBUG_CAM
+uint8_t init_tcp_logger(uint8_t timecode[15]);
+#elif
 uint8_t init_tcp_logger();
+#endif
+
 uint8_t tcp_log(std::string data);
 uint8_t stop_tcp_logger();
 void tcp_logger_task(void *arg);

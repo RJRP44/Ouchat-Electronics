@@ -26,5 +26,24 @@ menu "Ouchat Configuration"
             help
                 The IP of the logging server
 
+        config OUCHAT_DEBUG_CAM
+            bool "Camera for ai training"
+
+        config OUCHAT_DEBUG_CAM_SDA
+            int "Camera sda pin"
+            default 7
+            range 0 34
+            depends on OUCHAT_DEBUG_CAM
+            help
+                The pin used to communicate to the camera
+
+        config OUCHAT_DEBUG_CAM_SCL
+            int "Camera sda pin"
+            default 6
+            range 0 34
+            depends on OUCHAT_DEBUG_CAM
+            help
+                The pin used to communicate to the camera
+
     endmenu
 endmenu

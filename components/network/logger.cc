@@ -25,12 +25,26 @@ static QueueHandle_t log_queue;
 static QueueHandle_t deep_sleep_queue;
 static EventGroupHandle_t logger_event_group;
 
+#if CONFIG_OUCHAT_DEBUG_CAM
+
+static uint8_t rpi_timecode[15];
+
+uint8_t init_tcp_logger(uint8_t timecode[15]) {
+    log_queue = xQueueCreate(OUCHAT_LOG_QUEUE_SIZE, OUCHAT_LOG_SIZE);
+    deep_sleep_queue = xQueueCreate(1, 1);
+    logger_event_group = xEventGroupCreate();
+    memcpy(timecode, rpi_timecode, sizeof rpi_timecode);
+    return 0;
+}
+
+#elif
 uint8_t init_tcp_logger() {
     log_queue = xQueueCreate(OUCHAT_LOG_QUEUE_SIZE, OUCHAT_LOG_SIZE);
     deep_sleep_queue = xQueueCreate(1, 1);
     logger_event_group = xEventGroupCreate();
     return 0;
 }
+#endif
 
 uint8_t tcp_log(std::string data) {
 
@@ -62,12 +76,12 @@ void tcp_logger_task(void *args) {
     wifi_init(&status);
 
     //If not connected to the Wi-Fi cancel
-    if (!status){
+    if (!status) {
         ESP_LOGE(LOG_TAG, "Not connected to Wi-Fi, cancelling...");
         return;
     }
 
-    int sock  = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
+    int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
     if (sock < 0) {
         ESP_LOGE(LOG_TAG, "Failed to allocate socket...");
         vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -86,6 +100,12 @@ void tcp_logger_task(void *args) {
     //The context information in json
     cJSON *packet = cJSON_CreateObject();
     cJSON_AddStringToObject(packet, "cat", CONFIG_OUCHAT_CAT);
+
+#if CONFIG_OUCHAT_DEBUG_CAM
+    cJSON_AddStringToObject(packet, "timecode", reinterpret_cast<const char *const>(rpi_timecode));
+#elif
+    cJSON_AddStringToObject(packet, "timecode", "nocam");
+#endif
 
     size_t length;
     unsigned char output[961];

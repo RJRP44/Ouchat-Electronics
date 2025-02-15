@@ -132,10 +132,6 @@ extern "C" void app_main(void) {
         esp_deep_sleep_start();
     }
 
-#if CONFIG_OUCHAT_DEBUG_LOGGER
-    init_tcp_logger();
-#endif
-
     //Update and restart the sensor
     sensor_update_config(&sensor, DEFAULT_VL53L8CX_CONFIG);
 
@@ -146,6 +142,53 @@ extern "C" void app_main(void) {
     process_init();
     uint16_t empty_frames = 0;
     bool side_task = false;
+
+#if CONFIG_OUCHAT_DEBUG_CAM
+
+    ESP_LOGI("RPI-CAM","Starting");
+
+    i2c_port_t i2c_rpi_port = I2C_NUM_0;
+    i2c_master_bus_config_t i2c_rpi_config = {
+            .i2c_port = I2C_NUM_0,
+            .sda_io_num = (gpio_num_t)CONFIG_OUCHAT_DEBUG_CAM_SDA,
+            .scl_io_num = (gpio_num_t)CONFIG_OUCHAT_DEBUG_CAM_SCL,
+            .clk_source = I2C_CLK_SRC_DEFAULT,
+            .glitch_ignore_cnt = 7,
+            .intr_priority = 0,
+            .trans_queue_depth = 0,
+            .flags{.enable_internal_pullup = true}
+    };
+
+    i2c_master_bus_handle_t rpi_bus_handle;
+    i2c_new_master_bus(&i2c_rpi_config, &rpi_bus_handle);
+
+    //Define the rpi i²c configuration
+    i2c_device_config_t rpi_config = {
+            .dev_addr_length = I2C_ADDR_BIT_LEN_7,
+            .device_address = 0X13,
+            .scl_speed_hz = 400000,
+    };
+
+    i2c_master_dev_handle_t rpi_handle;
+
+    //Register the device
+    i2c_master_bus_add_device(rpi_bus_handle, &rpi_config, &rpi_handle);
+
+    //Start the record and get the datetime code in order to link the logs
+    uint8_t trigger[] = "Start";
+    uint8_t timecode[15] = {0};
+    size_t timecode_size = 14;
+
+    //The timecode format : YYYYmmddHHMMSS
+    i2c_master_transmit_receive(rpi_handle, trigger, sizeof trigger, timecode, timecode_size, -1);
+
+    //The end of the string
+    timecode[14] = '\0';
+#endif
+
+#if CONFIG_OUCHAT_DEBUG_LOGGER
+    init_tcp_logger(timecode);
+#endif
 
     while (empty_frames < 30) {
         vl53l8cx_check_data_ready(&sensor.handle, &ready);
@@ -191,6 +234,14 @@ extern "C" void app_main(void) {
             side_task = true;
         }
     }
+
+#if CONFIG_OUCHAT_DEBUG_CAM
+
+    //Stop the record
+    uint8_t stop[] = "Stop";
+    i2c_master_transmit(rpi_handle, stop, sizeof(stop), -1);
+
+#endif
 
 #if CONFIG_OUCHAT_DEBUG_LOGGER
 
