@@ -12,8 +12,8 @@
 #define OUCHAT_LOG_QUEUE_SIZE 200
 
 #if CONFIG_OUCHAT_DEBUG_CAM
-uint8_t init_tcp_logger(uint8_t timecode[15]);
-#elif
+uint8_t init_tcp_logger(uint8_t *timecode);
+#else
 uint8_t init_tcp_logger();
 #endif
 

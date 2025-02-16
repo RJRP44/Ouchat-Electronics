@@ -29,15 +29,15 @@ static EventGroupHandle_t logger_event_group;
 
 static uint8_t rpi_timecode[15];
 
-uint8_t init_tcp_logger(uint8_t timecode[15]) {
+uint8_t init_tcp_logger(uint8_t *timecode) {
     log_queue = xQueueCreate(OUCHAT_LOG_QUEUE_SIZE, OUCHAT_LOG_SIZE);
     deep_sleep_queue = xQueueCreate(1, 1);
     logger_event_group = xEventGroupCreate();
-    memcpy(timecode, rpi_timecode, sizeof rpi_timecode);
+    memcpy(rpi_timecode, timecode, sizeof rpi_timecode);
     return 0;
 }
 
-#elif
+#else
 uint8_t init_tcp_logger() {
     log_queue = xQueueCreate(OUCHAT_LOG_QUEUE_SIZE, OUCHAT_LOG_SIZE);
     deep_sleep_queue = xQueueCreate(1, 1);
@@ -103,7 +103,7 @@ void tcp_logger_task(void *args) {
 
 #if CONFIG_OUCHAT_DEBUG_CAM
     cJSON_AddStringToObject(packet, "timecode", reinterpret_cast<const char *const>(rpi_timecode));
-#elif
+#else
     cJSON_AddStringToObject(packet, "timecode", "nocam");
 #endif
 
