@@ -130,7 +130,7 @@ esp_err_t calibrate_sensor(sensor_t *sensor){
 
         //Wait for the sensor to start ranging
         while (!is_ready) {
-            WaitMs(&(sensor->handle.platform), 5);
+            vTaskDelay(5 / portTICK_PERIOD_MS);
             vl53l8cx_check_data_ready(&sensor->handle, &is_ready);
         }
 
@@ -142,8 +142,8 @@ esp_err_t calibrate_sensor(sensor_t *sensor){
     }
 
     //Do an average to avoid noise
-    uint32_t sum[8][8] = {0};
-    double calibration_data[8][8] = {0};
+    uint32_t sum[8][8] = {};
+    double calibration_data[8][8] = {};
 
     for (const auto & i : raw_calibration_data) {
         for (X_Y_FOR_LOOP) {

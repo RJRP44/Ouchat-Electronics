@@ -12,7 +12,7 @@ using namespace ouchat;
 
 namespace ouchat::ai
 {
-
+    bool initialized = false;
     uint8_t interpreter::tensor_arena[TENSOR_ARENA_SIZE]{};
     tflite::MicroInterpreter *interpreter::micro_interpreter;
 
@@ -49,12 +49,23 @@ namespace ouchat::ai
         }
 
         ESP_LOGI(tag, "Oucha²i version : %f", OUCHA2I_VERSION);
+        initialized = true;
 
         return ESP_OK;
     }
 
     esp_err_t interpreter::predict(model_input input, result* output)
     {
+
+        if (!initialized)
+        {
+            ESP_LOGE(tag, "Model is not initialized");
+
+            if (init(model) != ESP_OK)
+            {
+                return ESP_FAIL;
+            }
+        }
 
         memcpy(interpreter::micro_interpreter->input(0)->data.f, &input.to_normalized_array()[0], 23 * sizeof(float));
 

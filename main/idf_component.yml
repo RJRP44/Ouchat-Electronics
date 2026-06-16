@@ -1,4 +1,5 @@
 dependencies:
-  rjrp44/vl53l8cx: "^2.0.1"
-  espressif/led_strip: "^2.3.0"
-  espressif/esp-tflite-micro: "*"
+  rjrp44/vl53l8cx: ^4.0.1
+  espressif/led_strip: ^3.0.3
+  espressif/esp-tflite-micro: ^1.3.7
+  espressif/cjson: ^1.7.19~2

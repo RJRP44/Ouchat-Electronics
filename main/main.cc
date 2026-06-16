@@ -12,6 +12,7 @@
 #include <api.h>
 #include <leds.h>
 #include <model.h>
+#include <wifi.h>
 
 #define LOG_TAG "ouchat"
 
@@ -20,15 +21,21 @@ RTC_DATA_ATTR sensor_t sensor;
 using namespace ouchat;
 
 void side_tasks(void *arg){
+    
+    //Init the model first
+    ESP_ERROR_CHECK(ai::interpreter::init(ai::model));
 
     //Start all task without interrupting the reads
+    init_api();
+    init_leds();
+
 #if CONFIG_OUCHAT_DEBUG_LOGGER
     TaskHandle_t xHandle = nullptr;
 
     xTaskCreatePinnedToCore(tcp_logger_task, "ouchat_logger", 16384, &sensor.calibration, 5, &xHandle, 1);
     configASSERT(xHandle);
 #else
-    bool status = 0;
+    bool status = false;
     wifi_init(&status);
 
     //If not connected to the Wi-Fi cancel
@@ -37,18 +44,13 @@ void side_tasks(void *arg){
     }
 #endif
 
-    init_api();
-    init_leds();
-
-    ai::interpreter::init(ai::model);
-
     vTaskDelete(nullptr);
 }
 
 extern "C" void app_main(void) {
 
     //Get the wakeup reason
-    esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
+    uint32_t wakeup_reason = esp_sleep_get_wakeup_causes();
 
     //Apply the configuration to the i²c bus
     i2c_master_bus_handle_t bus_handle;
@@ -90,7 +92,7 @@ extern "C" void app_main(void) {
 #endif
 
     //First start
-    if (wakeup_reason != ESP_SLEEP_WAKEUP_EXT0) {
+    if (~wakeup_reason & BIT(ESP_SLEEP_WAKEUP_EXT0)) {
 
         init_leds();
 
@@ -108,18 +110,18 @@ extern "C" void app_main(void) {
         esp_err_t status = sensor_init(&sensor);
 
         while (status != ESP_OK){
-            set_color({ .red = 50, .blue = 26});
+            set_color({ .red = 50, .green = 0, .blue = 26});
             ESP_LOGE(LOG_TAG, "Sensor failed, restarting...");
 
             //Reset the sensor
-            Reset_Sensor(&sensor.handle.platform);
+            VL53L8CX_Reset_Sensor(&sensor.handle.platform);
             status = sensor_init(&sensor);
 
-            WaitMs(&sensor.handle.platform, 1000);
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
         }
 
         //Set the LED color
-        set_color({.red = 50, .green = 21});
+        set_color({.red = 50, .green = 21, .blue = 0});
 
         //Calibrate the sensor
         vl53l8cx_start_ranging(&sensor.handle);
@@ -268,11 +270,11 @@ extern "C" void app_main(void) {
 
     while (status != VL53L8CX_STATUS_OK)
     {
-        set_color({.red = 50, .blue = 26});
+        set_color({.red = 50, .green = 0, .blue = 26});
         ESP_LOGE(LOG_TAG, "Sensor failed, restarting...");
 
         //Reset the sensor
-        Reset_Sensor(&sensor.handle.platform);
+        VL53L8CX_Reset_Sensor(&sensor.handle.platform);
         sensor.config = DEFAULT_VL53L8CX_LP_CONFIG;
 
         //Restart and re-init it
@@ -283,7 +285,7 @@ extern "C" void app_main(void) {
         init_motion_indicator(&sensor);
         status |= sensor_init_thresholds(&sensor);
 
-        WaitMs(&sensor.handle.platform, 1000);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 
     //Make shure the sensor is powerd
