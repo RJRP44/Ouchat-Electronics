@@ -18,8 +18,7 @@
 
 #define INLIER_THRESHOLD_VALUE 15
 #define OUCHAT_CALIBRATION_DATASET_SIZE 40
-
-typedef unsigned long long marker;
+#define CALIBRATION_RANSAC_ITERATIONS 2000
 
 esp_err_t calibrate_sensor(sensor_t *sensor);
 

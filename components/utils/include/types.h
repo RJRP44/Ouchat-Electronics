@@ -13,6 +13,12 @@
 
 typedef struct
 {
+    int16_t distance;
+    uint8_t status;
+} measurement_t;
+
+typedef struct
+{
     uint32_t red;
     uint32_t green;
     uint32_t blue;
@@ -38,6 +44,7 @@ typedef struct
 {
     coord_t coord;
     int16_t cluster_id;
+    uint8_t status;
 } point_t;
 
 typedef struct

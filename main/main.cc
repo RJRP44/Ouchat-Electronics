@@ -13,6 +13,7 @@
 #include <leds.h>
 #include <model.h>
 #include <wifi.h>
+#include "esp_timer.h"
 
 #define LOG_TAG "ouchat"
 
@@ -21,7 +22,7 @@ RTC_DATA_ATTR sensor_t sensor;
 using namespace ouchat;
 
 void side_tasks(void *arg){
-    
+
     //Init the model first
     ESP_ERROR_CHECK(ai::interpreter::init(ai::model));
 
@@ -54,11 +55,22 @@ extern "C" void app_main(void) {
 
     //Apply the configuration to the i²c bus
     i2c_master_bus_handle_t bus_handle;
-    i2c_master_bus_config_t i2c_config = DEFAULT_I2C_BUS_CONFIG;
+
+    i2c_master_bus_config_t i2c_config;
+    i2c_config.i2c_port = I2C_NUM_1;
+    i2c_config.sda_io_num = OUCHAT_SENSOR_DEFAULT_SDA;
+    i2c_config.scl_io_num = OUCHAT_SENSOR_DEFAULT_SCL;
+    i2c_config.clk_source = I2C_CLK_SRC_DEFAULT;
+    i2c_config.glitch_ignore_cnt = 7;
+
     i2c_new_master_bus(&i2c_config, &bus_handle);
 
     //Register the device
-    i2c_device_config_t dev_config = DEFAULT_I2C_SENSOR_CONFIG;
+    i2c_device_config_t dev_config = {};
+    dev_config.dev_addr_length = I2C_ADDR_BIT_LEN_7;
+    dev_config.device_address = VL53L8CX_DEFAULT_I2C_ADDRESS >> 1;
+    dev_config.scl_speed_hz = VL53L8CX_MAX_CLK_SPEED;
+
     i2c_master_bus_add_device(bus_handle, &dev_config, &sensor.handle.platform.handle);
 
 #if CONFIG_OUCHAT_DEBUG_CAM
@@ -98,7 +110,7 @@ extern "C" void app_main(void) {
 
         //Power on sensor and init
         sensor.handle.platform.address = VL53L8CX_DEFAULT_I2C_ADDRESS;
-        sensor.handle.platform.bus_config = DEFAULT_I2C_BUS_CONFIG;
+        sensor.handle.platform.bus_config = i2c_config;
         sensor.handle.platform.reset_gpio = OUCHAT_SENSOR_DEFAULT_RST;
 
         gpio_set_direction(OUCHAT_SENSOR_DEFAULT_RST, GPIO_MODE_OUTPUT);
@@ -117,7 +129,7 @@ extern "C" void app_main(void) {
             VL53L8CX_Reset_Sensor(&sensor.handle.platform);
             status = sensor_init(&sensor);
 
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            vTaskDelay(100 / portTICK_PERIOD_MS);
         }
 
         //Set the LED color
@@ -173,6 +185,7 @@ extern "C" void app_main(void) {
 
     process_init();
     uint16_t empty_frames = 0;
+    uint16_t still_frames = 0;
     bool side_task = false;
 
 #if CONFIG_OUCHAT_DEBUG_CAM
@@ -192,23 +205,26 @@ extern "C" void app_main(void) {
 
 #endif
 
-    while (empty_frames < 30) {
+    //Taking into account that the cat could stay 10min in front of the cat flap without moving it is ~ 9000 frames
+    while (empty_frames < 60 && still_frames < 9000) {
         vl53l8cx_check_data_ready(&sensor.handle, &ready);
 
         if (ready) {
 
             uint16_t raw_data[8][8];
+            uint8_t data_status[8][8];
             coord_t sensor_data[8][8];
+
 
             //Convert 1D data to grid
             vl53l8cx_get_ranging_data(&sensor.handle, &results);
             memcpy(raw_data, results.distance_mm, sizeof(raw_data));
+            memcpy(data_status, results.target_status, sizeof(data_status));
 
             //Correct the data according to the calibration
             correct_sensor_data(&sensor, raw_data, sensor_data);
 
-            status = process_data(sensor_data, sensor.calibration);
-
+            status = process_data(sensor_data, data_status, sensor.calibration);
 
 #if CONFIG_OUCHAT_DEBUG_LOGGER
 
@@ -222,8 +238,15 @@ extern "C" void app_main(void) {
 
 #endif
 
-            if (empty_frames != 0 || status) {
-                empty_frames = status == 0 ? 0 : empty_frames + status;
+            //Stop only when there is no motion or nothing and then do a calibration
+            if (empty_frames != 0 || status)
+            {
+                empty_frames = status == 0 ? 0 : empty_frames + 1;
+            }
+
+            if (still_frames != 0 || results.motion_indicator.global_indicator_1 == 0)
+            {
+                still_frames = results.motion_indicator.global_indicator_1 != 0 ? 0 : still_frames + 1;
             }
 
         }else if(!side_task){
@@ -252,9 +275,27 @@ extern "C" void app_main(void) {
 
 #endif
 
+    //Calibration before sleep
+    ESP_LOGI(LOG_TAG, "Starting sensor calibration");
+    calibrate_sensor(&sensor);
+    ESP_LOGI(LOG_TAG, "Sensor calibrated on %d points !", sensor.calibration.inliers);
+
+    if (api_flags == nullptr)
+    {
+        ESP_LOGI(LOG_TAG, "Waiting API initialization...");
+    }
+
+    //Wait if the api is not initialized
+    while (api_flags == nullptr) {
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+
     //Wait if the esp is requesting the api
     if (xEventGroupGetBits(api_flags) & REQUEST_FLAG){
-        xEventGroupWaitBits(api_flags, REQUEST_DONE_FLAG, pdTRUE,pdTRUE,portMAX_DELAY);
+        ESP_LOGI(LOG_TAG, "Waiting for data transmission to API before sleep...");
+
+        //Wait until the request is done with a 20s timeout
+        xEventGroupWaitBits(api_flags, REQUEST_DONE_FLAG, pdTRUE,pdTRUE,20000 / portTICK_PERIOD_MS);
     }
 
     //Reset the trigger saved by the bistable 555 circuit
@@ -297,7 +338,11 @@ extern "C" void app_main(void) {
     //Clear the queue to allow Autonomous mode
     ready = 0;
 
-    while (!ready) {
+    ESP_LOGI(LOG_TAG, "Clearing queue to allow VL53L8CX's autonomous mode");
+
+    //5s timeout
+    int64_t timeout = esp_timer_get_time();
+    while (!ready && timeout + 5000000 > esp_timer_get_time()) {
         vl53l8cx_check_data_ready(&sensor.handle, &ready);
     }
 

@@ -25,35 +25,18 @@
 #define OUCHAT_SENSOR_DEFAULT_RST_TRIGGER GPIO_NUM_4
 #define OUCHAT_SENSOR_DEFAULT_RST GPIO_NUM_5
 
-//Default i2c, and sensor configs
-#define DEFAULT_I2C_BUS_CONFIG {                            \
-        .i2c_port = I2C_NUM_1,                              \
-        .sda_io_num = OUCHAT_SENSOR_DEFAULT_SDA,                           \
-        .scl_io_num = OUCHAT_SENSOR_DEFAULT_SCL,                           \
-        .clk_source = I2C_CLK_SRC_DEFAULT,                  \
-        .glitch_ignore_cnt = 7,                             \
-        .intr_priority = 0,                                 \
-        .trans_queue_depth = 0,                             \
-        .flags{.enable_internal_pullup = true}              \
-}
-
-#define DEFAULT_I2C_SENSOR_CONFIG {                         \
-        .dev_addr_length = I2C_ADDR_BIT_LEN_7,              \
-        .device_address = VL53L8CX_DEFAULT_I2C_ADDRESS >> 1,\
-        .scl_speed_hz = VL53L8CX_MAX_CLK_SPEED,             \
-};
-
 #define DEFAULT_VL53L8CX_CONFIG {                           \
         .resolution = VL53L8CX_RESOLUTION_8X8,              \
         .frequency = 15,                                    \
         .mode = VL53L8CX_RANGING_MODE_CONTINUOUS,           \
+        .integration_time = 0,                              \
 }
 
 #define DEFAULT_VL53L8CX_LP_CONFIG {                        \
         .resolution = VL53L8CX_RESOLUTION_8X8,              \
         .frequency = 5,                                     \
         .mode = VL53L8CX_RANGING_MODE_AUTONOMOUS,           \
-        .integration_time = 5,                             \
+        .integration_time = 5,                              \
 }
 
 esp_err_t sensor_init(sensor_t *sensor);

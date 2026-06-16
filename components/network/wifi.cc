@@ -8,7 +8,7 @@
 #include <esp_log.h>
 #include <wifi.h>
 
-static EventGroupHandle_t wifi_event_group;
+EventGroupHandle_t wifi_event_group;
 static uint8_t retry = 0;
 
 static void event_sta_start_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
@@ -17,15 +17,18 @@ static void event_sta_start_handler(void *arg, esp_event_base_t event_base, int3
 
 static void event_connected_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
     xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED);
+    ESP_LOGI(WIFI_TAG,"WiFi connected");
 }
 
 static void event_disconnected_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
 
     //Retry
     if (retry < MAXIMUM_RETRY) {
+        ESP_LOGW(WIFI_TAG,"WiFi failed trying again...");
         esp_wifi_connect();
         retry++;
     } else {
+        ESP_LOGE(WIFI_TAG,"WiFi failed...");
         xEventGroupSetBits(wifi_event_group, WIFI_FAIL);
         retry = 0;
     }
@@ -46,6 +49,8 @@ void wifi_init(void *value) {
 
     //Init event group
     wifi_event_group = xEventGroupCreate();
+    xEventGroupClearBits(wifi_event_group, WIFI_CONNECTED);
+    xEventGroupClearBits(wifi_event_group, WIFI_FAIL);
 
     //Init NVS Flash
     esp_err_t status = nvs_flash_init();

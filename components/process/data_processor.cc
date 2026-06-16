@@ -80,7 +80,7 @@ static void movement_handler(tracker_t tracker, const calibration_config_t& cali
         ESP_LOGI(PROCESSOR_LOG_TAG, "\e[1;32m Inside !\e[0m");
 
         //Set the LED color
-        set_color({.green = 50});
+        set_color({.red = 0, .green = 50, .blue = 0});
 
         int16_t value = 1;
 
@@ -93,7 +93,7 @@ static void movement_handler(tracker_t tracker, const calibration_config_t& cali
         ESP_LOGI(PROCESSOR_LOG_TAG, "\e[1;31m Outside !\e[0m");
 
         //Set the LED color
-        set_color({.red = 50});
+        set_color({.red = 50, .green = 0, .blue = 0});
 
         int16_t value = 0;
 
@@ -185,13 +185,14 @@ static void propagate_to_neighbours(frame_t* frame, p_coord_t source, cluster_t*
     }
 }
 
-static void frame_init(frame_t* frame, coord_t data[8][8])
+static void frame_init(frame_t* frame, coord_t data[8][8], uint8_t data_status[8][8])
 {
     //Copy each point and set its cluster_id to undefined
     for (X_Y_FOR_LOOP)
     {
         memcpy(&frame->data[x][y].coord, &data[x][y], sizeof(coord_t));
         frame->data[x][y].cluster_id = UNDEFINED;
+        frame->data[x][y].status = data_status[x][y];
     }
 
     //Set the cluster / background count to 0
@@ -201,11 +202,18 @@ static void frame_init(frame_t* frame, coord_t data[8][8])
 
 static void frame_background_mask(frame_t* frame, const calibration_config_t& config)
 {
-    //All point near the floor (±150mm)
+    //All point near the floor (±150mm) or non-valid measurement
     for (X_Y_FOR_LOOP)
     {
-        if (fabs(frame->data[x][y].coord.z - config.floor_distance) < BACKGROUND_THRESHOLD || config.outliers[x][y] != -
-            1)
+        bool backgrounded = false;
+        backgrounded |= fabs(frame->data[x][y].coord.z - config.floor_distance) < BACKGROUND_THRESHOLD;
+        backgrounded |= config.outliers[x][y] != -1;
+
+        //According to uld's guide, um2884 5, 9 and 10 status code doesn't impact measurements
+        uint8_t status = frame->data[x][y].status;
+        backgrounded |= status != 5 && status != 9 && status != 10;
+
+        if (backgrounded)
         {
             frame->data[x][y].cluster_id = BACKGROUND;
             frame->background_count++;
@@ -351,7 +359,7 @@ esp_err_t print_frame(const frame_t& frame)
     return ESP_OK;
 }
 
-esp_err_t process_data(coord_t sensor_data[8][8], calibration_config_t calibration)
+esp_err_t process_data(coord_t sensor_data[8][8], uint8_t data_status[8][8], calibration_config_t calibration)
 {
     //The cluster count is 0, so it's the first frame
     if (previous_frame.clusters.empty())
@@ -359,7 +367,7 @@ esp_err_t process_data(coord_t sensor_data[8][8], calibration_config_t calibrati
         frame_t first_frame;
 
         //Copy all the 3d points of the corrected data
-        frame_init(&first_frame, sensor_data);
+        frame_init(&first_frame, sensor_data, data_status);
         frame_background_mask(&first_frame, calibration);
 
         //Grid DBSCAN
@@ -377,7 +385,9 @@ esp_err_t process_data(coord_t sensor_data[8][8], calibration_config_t calibrati
                 continue;
             }
 
-            cluster_t cluster = {.id = count, .size = 0};
+            cluster_t cluster = {};
+            cluster.id = count;
+            cluster.size = 0;
 
             propagate_to_neighbours(&first_frame, (p_coord_t){x, y}, &cluster);
 
@@ -388,7 +398,7 @@ esp_err_t process_data(coord_t sensor_data[8][8], calibration_config_t calibrati
         }
 
         //All the clusters are new so the trackers must be initialized
-        coord_t sums[count];
+        auto* sums = new coord_t[count];
         for (X_Y_FOR_LOOP)
         {
             int16_t cluster_id = first_frame.data[x][y].cluster_id;
@@ -432,7 +442,7 @@ esp_err_t process_data(coord_t sensor_data[8][8], calibration_config_t calibrati
         }
 
         //Get the average for each cluster and add it to it tracker
-        coord_t start_coord[count];
+        auto* start_coord = new coord_t[count];
         for (int i = 0; i < count; ++i)
         {
             start_coord[i].x = sums[i].x / first_frame.clusters[i].size;
@@ -458,8 +468,8 @@ esp_err_t process_data(coord_t sensor_data[8][8], calibration_config_t calibrati
         }
 
         //Calculate the variance for the standard deviation
-        double variances[count];
-        memset(variances, 0, sizeof(variances));
+        auto* variances = new double[count];
+        memset(variances, 0, count * sizeof(double));
         for (X_Y_FOR_LOOP)
         {
             int16_t cluster_id = first_frame.data[x][y].cluster_id;
@@ -491,23 +501,27 @@ esp_err_t process_data(coord_t sensor_data[8][8], calibration_config_t calibrati
         print_frame(first_frame);
         previous_frame = first_frame;
 
+        delete[] sums;
+        delete[] start_coord;
+        delete[] variances;
+
         return first_frame.clusters.empty();
     }
 
     frame_t current_frame;
 
     //Copy all the 3d points of the corrected data
-    frame_init(&current_frame, sensor_data);
+    frame_init(&current_frame, sensor_data, data_status);
     frame_background_mask(&current_frame, calibration);
 
     //Create a pixel coord array to define the processing order
     uint8_t total_points = 64 - previous_frame.background_count;
-    p_coord_t coords[total_points];
+    auto* coords = new p_coord_t[total_points];
 
     {
         uint8_t i = 0;
 
-        memset(coords, 0, sizeof(coords));
+        memset(coords, 0, total_points * sizeof(p_coord_t));
 
         //List all non-background points
         for (X_Y_FOR_LOOP)
@@ -573,7 +587,11 @@ esp_err_t process_data(coord_t sensor_data[8][8], calibration_config_t calibrati
 
         //Transmit the tracker
         int16_t index = cluster_index(previous_frame.clusters, cluster_id);
-        cluster_t cluster = {.id = cluster_id, .size = 0, .tracker = previous_frame.clusters[index].tracker};
+        cluster_t cluster = {};
+
+        cluster.id = cluster_id;
+        cluster.size = 0;
+        cluster.tracker = previous_frame.clusters[index].tracker;
 
         propagate_to_neighbours(&current_frame, coord, &cluster);
 
@@ -585,6 +603,8 @@ esp_err_t process_data(coord_t sensor_data[8][8], calibration_config_t calibrati
         //Add the cluster
         current_frame.clusters.insert(current_frame.clusters.end(), cluster);
     }
+
+    delete[] coords;
 
     //Assign a cluster to the others
     for (X_Y_FOR_LOOP)
@@ -622,7 +642,9 @@ esp_err_t process_data(coord_t sensor_data[8][8], calibration_config_t calibrati
 
         assert(cluster_id != -1);
 
-        cluster_t cluster = {.id = cluster_id, .size = 0};
+        cluster_t cluster = {};
+        cluster.id = cluster_id;
+        cluster.size = 0;
 
         propagate_to_neighbours(&current_frame, (p_coord_t){x, y}, &cluster);
 
@@ -675,8 +697,8 @@ esp_err_t process_data(coord_t sensor_data[8][8], calibration_config_t calibrati
     }
 
     //Track the coordinates
-    coord_t sums[current_frame.clusters.size()];
-    memset(sums, 0, sizeof sums);
+    auto* sums = new coord_t[current_frame.clusters.size()];
+    memset(sums, 0, current_frame.clusters.size() * sizeof(coord_t));
 
     for (X_Y_FOR_LOOP)
     {
@@ -733,9 +755,11 @@ esp_err_t process_data(coord_t sensor_data[8][8], calibration_config_t calibrati
         cluster.coord = average_coord;
     }
 
+    delete[] sums;
+
     //Calculate the variance for the standard deviation
-    double variances[current_frame.clusters.size()];
-    memset(variances, 0, sizeof(variances));
+    auto* variances = new double[current_frame.clusters.size()];
+    memset(variances, 0, current_frame.clusters.size() * sizeof(double));
 
     for (X_Y_FOR_LOOP)
     {
@@ -794,6 +818,8 @@ esp_err_t process_data(coord_t sensor_data[8][8], calibration_config_t calibrati
         tracker->minimum.y = MIN(tracker->minimum.y, cluster.coord.y);;
         tracker->minimum.z = MIN(tracker->minimum.z, cluster.coord.z);;
     }
+
+    delete[] variances;
 
     previous_frame = current_frame;
 

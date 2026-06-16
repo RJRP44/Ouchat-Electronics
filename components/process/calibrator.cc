@@ -6,7 +6,7 @@
 #include <vl53l8cx_api.h>
 #include <utils.h>
 #include <types.h>
-#include <memory.h>
+#include "esp_random.h"
 
 static uint8_t pixel_angles(p_coord_t coordinates, p_angles_t *angles) {
 
@@ -33,29 +33,55 @@ static uint8_t pixel_coordinates(coord_t *coordinates, double measure, p_coord_t
     return 0;
 }
 
-marker one = 1;
+static double distance_plane_to_point(const plane_t& plane, const coord_t& point)
+{
+    return fabs(plane.a * point.x + plane.b * point.y + plane.c * point.z - plane.d) /
+                              sqrt(pow(plane.a, 2) + pow(plane.b, 2) + pow(plane.c, 2));
+}
 
-void determine_floor(int pool, int need, marker chosen, int at, double calibrating_dataset[8][8], plane_t *floor_plane,
-                     uint8_t *inliers) {
-    if (pool < need + at) return; /* not enough bits left */
+void fit(coord_t dataset[64], plane_t *floor_plane, uint8_t *inliers)
+{
+    *inliers = 0;
+    double best_error = INFINITY;
+    for (int i = 0; i < CALIBRATION_RANSAC_ITERATIONS; i++)
+    {
 
-    if (!need) {
+        //We want 3 random values from 0 to 64
+        uint32_t seed = esp_random();
 
-        //Get the plane for 3 points : A, B, C
+        uint8_t a = seed & 63;
+        uint8_t b = seed >> 7 & 63;
+        uint8_t c = seed >> 14 & 63;
+
+        if (a == b || a == c || b == c)
+        {
+            i--;
+            continue;
+        }
+
         coord_t points[3];
-        p_coord_t pixels[3];
 
-        uint8_t point_counter = 0;
+        points[0] = dataset[a];
+        points[1] = dataset[b];
+        points[2] = dataset[c];
 
-        for (at = 0; at < pool; at++) {
-            if (chosen & (one << at)) {
-                const auto x = ABSCISSA_FROM_1D(at);
-                const auto y = ORDINATE_FROM_1D(at);
-                pixels[point_counter] = (p_coord_t) {x, y};
-                pixel_coordinates(&points[point_counter], calibrating_dataset[x][y], pixels[point_counter]);
+        //It is not useful to create a plane with a null point
+        if (points[0].empty())
+        {
+            i--;
+            continue;
+        }
 
-                point_counter++;
-            }
+        if (points[1].empty())
+        {
+            i--;
+            continue;
+        }
+
+        if (points[2].empty())
+        {
+            i--;
+            continue;
         }
 
         //Make sure that the 3 points aren't collinear
@@ -64,13 +90,13 @@ void determine_floor(int pool, int need, marker chosen, int at, double calibrati
                      points[1].z * points[2].y * points[0].x - points[2].z * points[0].y * points[1].x;
 
         if (fabs(det) < 0.0000001) {
-            return;
+            continue;
         }
 
         //Coefficient of our plane
         plane_t plane;
 
-        //coordinate vector from AB∧AC
+        //Coordinate vector from AB∧AC
         plane.a = (points[1].y - points[0].y) * (points[2].z - points[0].z) -
                   (points[1].z - points[0].z) * (points[2].y - points[0].y);
         plane.b = (points[1].z - points[0].z) * (points[2].x - points[0].x) -
@@ -81,46 +107,44 @@ void determine_floor(int pool, int need, marker chosen, int at, double calibrati
         //Calculate the value of d
         plane.d = plane.a * points[0].x + plane.b * points[0].y + plane.c * points[0].z;
 
+        double error = 0;
         uint8_t plane_inliers = 0;
 
-        //For each other points calculate the distance from the plane
-        for (X_Y_FOR_LOOP) {
-
-            double distance;
-
-            for (auto & pixel : pixels) {
-                if (pixel.x == x && pixel.y == y) {
-                    goto end;
-                }
+        //For each other points calculate the distance from the plane in order to get the error
+        for (int j = 0; j < 64; j++)
+        {
+            //The error is 0 for those 3 points
+            if (j == a || j == b || j == c)
+            {
+                plane_inliers++;
+                continue;
             }
 
-            coord_t point;
-            pixel_coordinates(&point, calibrating_dataset[x][y], {x, y});
-            distance = fabs(plane.a * point.x + plane.b * point.y + plane.c * point.z - plane.d) /
-                              sqrt(pow(plane.a, 2) + pow(plane.b, 2) + pow(plane.c, 2));
+            //Skip if null
+            if (dataset[j].empty())
+                continue;
+
+            double distance = distance_plane_to_point(plane,dataset[j]);
+
 
             if (distance < INLIER_THRESHOLD_VALUE) {
                 plane_inliers++;
             }
-
-            end:
-            continue;
+            error += pow(plane_inliers, 2);
         }
 
-        if (plane_inliers > *inliers) {
+        //If the new plane has less error it is considered better
+        if (plane_inliers > *inliers || (error < best_error && plane_inliers == *inliers))
+        {
+            best_error = error;
             *floor_plane = plane;
             *inliers = plane_inliers;
         }
-
-        return;
     }
-    //if we choose the current item, "or" (|) the bit to mark it so.
-    determine_floor(pool, need - 1, chosen | (one << at), at + 1, calibrating_dataset, floor_plane, inliers);
-    determine_floor(pool, need, chosen, at + 1, calibrating_dataset, floor_plane, inliers);  /* or don't choose it, go to next */
 }
 
 esp_err_t calibrate_sensor(sensor_t *sensor){
-    uint16_t raw_calibration_data[OUCHAT_CALIBRATION_DATASET_SIZE][8][8];
+    measurement_t raw_calibration_data[OUCHAT_CALIBRATION_DATASET_SIZE][8][8];
 
     for (auto & i : raw_calibration_data) {
 
@@ -138,32 +162,55 @@ esp_err_t calibrate_sensor(sensor_t *sensor){
         VL53L8CX_ResultsData results;
         vl53l8cx_get_ranging_data(&sensor->handle, &results);
 
-        memcpy(i, results.distance_mm, sizeof i);
+        for (X_Y_FOR_LOOP) {
+            i[x][y].distance = results.distance_mm[x * 8 + y];
+            i[x][y].status = results.target_status[x * 8 + y];
+        }
     }
 
     //Do an average to avoid noise
     uint32_t sum[8][8] = {};
-    double calibration_data[8][8] = {};
+
+    //For each pixel count the number of valid measurements
+    uint8_t valid_measurements[8][8] = {};
 
     for (const auto & i : raw_calibration_data) {
         for (X_Y_FOR_LOOP) {
-            sum[x][y] += i[x][y];
+
+            //According to uld's guide, um2884 5, 9 and 10 status code doesn't impact measurements
+            if (i[x][y].status != 5 && i[x][y].status != 9 && i[x][y].status != 10)
+                continue;
+
+            sum[x][y] += i[x][y].distance;
+            valid_measurements[x][y]++;
         }
     }
 
-    for (X_Y_FOR_LOOP) {
-        calibration_data[x][y] = static_cast<double>(sum[x][y]) / OUCHAT_CALIBRATION_DATASET_SIZE;
-        sensor->calibration.background[x][y] = static_cast<uint16_t>(round(calibration_data[x][y]));
+    coord_t dataset[64] = {};
 
-        if (sensor->calibration.furthest_point > static_cast<uint16_t>(round(calibration_data[x][y]))){
+    for (X_Y_FOR_LOOP) {
+
+        //If there is not a single correct measurement we shouldn't take this into the calibration
+        if (valid_measurements[x][y] == 0)
+        {
             continue;
         }
 
-        sensor->calibration.furthest_point = static_cast<uint16_t>(round(calibration_data[x][y]));
+        double distance = static_cast<double>(sum[x][y]) / valid_measurements[x][y];
+        sensor->calibration.background[x][y] = static_cast<uint16_t>(round(distance));
+
+        pixel_coordinates(&dataset[x * 8 + y], distance, {.x = x,.y = y});
+
+        if (sensor->calibration.furthest_point > static_cast<uint16_t>(round(distance))){
+            continue;
+        }
+
+        sensor->calibration.furthest_point = static_cast<uint16_t>(round(distance));
     }
 
     sensor->calibration.inliers = 0;
-    determine_floor(64, 3, 0, 0, calibration_data, &sensor->calibration.floor, &sensor->calibration.inliers);
+
+    fit(dataset, &sensor->calibration.floor, &sensor->calibration.inliers);
 
     //Calculate the angles of the floor in oder to compensate them after
     double norm = sqrt(pow(sensor->calibration.floor.a, 2) + pow(sensor->calibration.floor.b, 2) + pow(sensor->calibration.floor.c, 2));

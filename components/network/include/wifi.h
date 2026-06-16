@@ -12,6 +12,10 @@
 #define MAXIMUM_RETRY 4
 #define THREADED_TASK NULL
 
+#define WIFI_TAG "wifi"
+
+extern EventGroupHandle_t wifi_event_group;
+
 void wifi_init(void *value);
 
 #endif //OUCHAT_ELECTRONICS_WIFI_H
