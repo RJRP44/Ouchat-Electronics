@@ -9,7 +9,6 @@
 #include <calibrator.h>
 #include <api.h>
 #include <leds.h>
-#include <led_strip.h>
 #include <utils.h>
 #include <ai.h>
 
