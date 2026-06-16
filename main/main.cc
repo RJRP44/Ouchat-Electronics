@@ -55,22 +55,11 @@ extern "C" void app_main(void) {
 
     //Apply the configuration to the i²c bus
     i2c_master_bus_handle_t bus_handle;
-
-    i2c_master_bus_config_t i2c_config;
-    i2c_config.i2c_port = I2C_NUM_1;
-    i2c_config.sda_io_num = OUCHAT_SENSOR_DEFAULT_SDA;
-    i2c_config.scl_io_num = OUCHAT_SENSOR_DEFAULT_SCL;
-    i2c_config.clk_source = I2C_CLK_SRC_DEFAULT;
-    i2c_config.glitch_ignore_cnt = 7;
-
+    i2c_master_bus_config_t i2c_config = DEFAULT_I2C_BUS_CONFIG;
     i2c_new_master_bus(&i2c_config, &bus_handle);
 
     //Register the device
-    i2c_device_config_t dev_config = {};
-    dev_config.dev_addr_length = I2C_ADDR_BIT_LEN_7;
-    dev_config.device_address = VL53L8CX_DEFAULT_I2C_ADDRESS >> 1;
-    dev_config.scl_speed_hz = VL53L8CX_MAX_CLK_SPEED;
-
+    i2c_device_config_t dev_config = DEFAULT_I2C_SENSOR_CONFIG;
     i2c_master_bus_add_device(bus_handle, &dev_config, &sensor.handle.platform.handle);
 
 #if CONFIG_OUCHAT_DEBUG_CAM
@@ -110,7 +99,7 @@ extern "C" void app_main(void) {
 
         //Power on sensor and init
         sensor.handle.platform.address = VL53L8CX_DEFAULT_I2C_ADDRESS;
-        sensor.handle.platform.bus_config = i2c_config;
+        sensor.handle.platform.bus_config = DEFAULT_I2C_BUS_CONFIG;
         sensor.handle.platform.reset_gpio = OUCHAT_SENSOR_DEFAULT_RST;
 
         gpio_set_direction(OUCHAT_SENSOR_DEFAULT_RST, GPIO_MODE_OUTPUT);
