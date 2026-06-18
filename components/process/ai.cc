@@ -80,7 +80,7 @@ namespace ouchat::ai
         float inside = interpreter::micro_interpreter->output(0)->data.f[2];
         float other = interpreter::micro_interpreter->output(0)->data.f[1];
 
-        std::cout << "Predictions : {" << outside << ";" << inside << ";" << other << "}" << std::endl;
+        ESP_LOGI(tag, "Predictions {%f,%f,%f}", outside, inside, other);
 
         if (roundf(outside) == 1.0F && roundf(inside) == 0.0F && roundf(other) == 0.0F)
         {

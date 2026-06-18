@@ -76,7 +76,7 @@ static void movement_handler(tracker_t tracker, const calibration_config_t& cali
 
     if (result == ai::INSIDE)
     {
-        ESP_LOGI(PROCESSOR_LOG_TAG, "\e[1;32m Inside !\e[0m");
+        ESP_LOGI(PROCESSOR_LOG_TAG, "Inside !");
 
         //Set the LED color
         set_color({.red = 0, .green = 50, .blue = 0});
@@ -89,7 +89,7 @@ static void movement_handler(tracker_t tracker, const calibration_config_t& cali
 
     if (result == ai::OUTSIDE)
     {
-        ESP_LOGI(PROCESSOR_LOG_TAG, "\e[1;31m Outside !\e[0m");
+        ESP_LOGI(PROCESSOR_LOG_TAG, "Outside !");
 
         //Set the LED color
         set_color({.red = 50, .green = 0, .blue = 0});
