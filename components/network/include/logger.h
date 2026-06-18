@@ -8,8 +8,10 @@
 #include <string>
 
 #define OUCHAT_LOG_EVENT_STOPPED BIT0
-#define OUCHAT_LOG_SIZE 190
-#define OUCHAT_LOG_QUEUE_SIZE 200
+#define OUCHAT_LOG_SIZE 500
+#define OUCHAT_RAW_DATA_SIZE 1825
+#define OUCHAT_RAW_PACKET_SIZE 1950
+#define OUCHAT_LOG_QUEUE_SIZE 250
 
 #if CONFIG_OUCHAT_DEBUG_CAM
 uint8_t init_tcp_logger(uint8_t *timecode);

@@ -50,6 +50,11 @@ void side_tasks(void *arg){
 
 extern "C" void app_main(void) {
 
+#if CONFIG_OUCHAT_DEBUG_LOGGER
+    //Remove info logs from Wi-Fi, it messes with the log ingester
+    esp_log_level_set("wifi", ESP_LOG_WARN);
+#endif
+
     //Get the wakeup reason
     uint32_t wakeup_reason = esp_sleep_get_wakeup_causes();
 
@@ -220,9 +225,9 @@ extern "C" void app_main(void) {
             //Use base 64 to save the raw data
             size_t length;
             std::string log;
-            log.resize(OUCHAT_LOG_SIZE);
+            log.resize(OUCHAT_RAW_DATA_SIZE);
 
-            mbedtls_base64_encode(reinterpret_cast<unsigned char*>(log.data()), log.size(), &length, reinterpret_cast<const unsigned char*>(results.distance_mm),sizeof (results.distance_mm));
+            mbedtls_base64_encode(reinterpret_cast<unsigned char*>(log.data()), log.size(), &length, reinterpret_cast<const unsigned char*>(&results),sizeof (results));
             tcp_log(log);
 
 #endif
@@ -248,21 +253,6 @@ extern "C" void app_main(void) {
             side_task = true;
         }
     }
-
-#if CONFIG_OUCHAT_DEBUG_CAM
-
-    //Stop the record
-    uint8_t stop[] = "Stop";
-    i2c_master_transmit(rpi_handle, stop, sizeof(stop), -1);
-
-#endif
-
-#if CONFIG_OUCHAT_DEBUG_LOGGER
-
-    //Stop the logger before sleep
-    stop_tcp_logger();
-
-#endif
 
     //Calibration before sleep
     ESP_LOGI(LOG_TAG, "Starting sensor calibration");
@@ -338,6 +328,21 @@ extern "C" void app_main(void) {
     vl53l8cx_get_ranging_data(&sensor.handle, &results);
 
     ESP_LOGI(LOG_TAG, "Entering deep sleep");
+
+#if CONFIG_OUCHAT_DEBUG_CAM
+
+    //Stop the record
+    uint8_t stop[] = "Stop";
+    i2c_master_transmit(rpi_handle, stop, sizeof(stop), -1);
+
+#endif
+
+#if CONFIG_OUCHAT_DEBUG_LOGGER
+
+    //Stop the logger before sleep
+    stop_tcp_logger();
+
+#endif
 
     //Start the deep sleep
     esp_deep_sleep_start();
