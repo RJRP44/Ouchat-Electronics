@@ -70,7 +70,7 @@ int logging_vprintf( const char *fmt, va_list l )
 
 #if CONFIG_OUCHAT_DEBUG_CAM
 
-static uint8_t rpi_timecode[15];
+static char rpi_timecode[20];
 
 uint8_t init_tcp_logger(uint8_t *timecode) {
     log_queue = xQueueCreate(OUCHAT_LOG_QUEUE_SIZE, sizeof(char*));
@@ -81,7 +81,14 @@ uint8_t init_tcp_logger(uint8_t *timecode) {
     }
     deep_sleep_queue = xQueueCreate(1, 1);
     logger_event_group = xEventGroupCreate();
-    memcpy(rpi_timecode, timecode, sizeof rpi_timecode);
+
+    memset(rpi_timecode, 0, sizeof(rpi_timecode));
+
+    memcpy(rpi_timecode, timecode, 19);
+
+    rpi_timecode[19] = '\0';
+    printf("timecoooode : %s\n", rpi_timecode);
+
 
     esp_log_set_vprintf(logging_vprintf);
     ESP_LOGI(LOG_TAG, "Starting logger");
@@ -172,7 +179,7 @@ void tcp_logger_task(void *args) {
     cJSON_AddStringToObject(content, "cat", CONFIG_OUCHAT_CAT);
 
 #if CONFIG_OUCHAT_DEBUG_CAM
-    cJSON_AddStringToObject(content, "timestamp", reinterpret_cast<const char *const>(rpi_timecode));
+    cJSON_AddStringToObject(content, "timestamp", rpi_timecode);
 #else
     cJSON_AddStringToObject(content, "timestamp", "nocam");
 #endif

@@ -14,6 +14,7 @@
 #include <model.h>
 #include <wifi.h>
 #include "esp_timer.h"
+#include "driver/i2c_slave.h"
 
 #define LOG_TAG "ouchat"
 
@@ -21,6 +22,19 @@ RTC_DATA_ATTR sensor_t sensor;
 
 using namespace ouchat;
 
+static uint8_t rpi_timecode[24] = {0};
+static volatile bool timecode_received = false;
+
+static bool i2c_slave_receive_cb(i2c_slave_dev_handle_t i2c_slave, const i2c_slave_rx_done_event_data_t *evt_data, void *arg)
+{
+    if (evt_data->buffer[0] == 0x01) {
+        // Copie rapide en mémoire (autorisé en ISR)
+        memcpy(rpi_timecode, &evt_data->buffer[1], 19);
+        rpi_timecode[19] = '\0';
+        timecode_received = true;
+    }
+    return true;
+}
 void side_tasks(void *arg){
 
     //Init the model first
@@ -69,32 +83,45 @@ extern "C" void app_main(void) {
 
 #if CONFIG_OUCHAT_DEBUG_CAM
 
-    i2c_master_bus_config_t i2c_rpi_config = {
-            .i2c_port = I2C_NUM_0,
-            .sda_io_num = (gpio_num_t)CONFIG_OUCHAT_DEBUG_CAM_SDA,
-            .scl_io_num = (gpio_num_t)CONFIG_OUCHAT_DEBUG_CAM_SCL,
-            .clk_source = I2C_CLK_SRC_DEFAULT,
-            .glitch_ignore_cnt = 7,
-            .intr_priority = 0,
-            .trans_queue_depth = 0,
-            .flags{.enable_internal_pullup = true}
+    gpio_set_direction((gpio_num_t)CONFIG_OUCHAT_DEBUG_CAM_TRIGGER, GPIO_MODE_OUTPUT);
+    gpio_set_level((gpio_num_t)CONFIG_OUCHAT_DEBUG_CAM_TRIGGER, 1);
+    ESP_LOGI(LOG_TAG, "Camera started");
+
+    i2c_slave_dev_handle_t i2c_rpi_handle;
+
+    i2c_slave_config_t i2c_rpi_config = {
+        .i2c_port = I2C_NUM_0,
+        .sda_io_num = (gpio_num_t)CONFIG_OUCHAT_DEBUG_CAM_SDA,
+        .scl_io_num = (gpio_num_t)CONFIG_OUCHAT_DEBUG_CAM_SCL,
+        .clk_source = I2C_CLK_SRC_DEFAULT,
+        .send_buf_depth = 256,
+        .receive_buf_depth = 256,
+        .slave_addr = 0x13,
+        .addr_bit_len = I2C_ADDR_BIT_LEN_7,
+        .intr_priority = 0,
+        .flags = {},
     };
+    i2c_new_slave_device(&i2c_rpi_config, &i2c_rpi_handle);
 
-    i2c_master_bus_handle_t rpi_bus_handle;
-    i2c_new_master_bus(&i2c_rpi_config, &rpi_bus_handle);
+    i2c_slave_event_callbacks_t cbs = {};
+    cbs.on_receive = i2c_slave_receive_cb;
 
-    //Define the rpi i²c configuration
-    i2c_device_config_t rpi_config = {
-            .dev_addr_length = I2C_ADDR_BIT_LEN_7,
-            .device_address = 0X13,
-            .scl_speed_hz = 400000,
-    };
+    ESP_ERROR_CHECK(i2c_slave_register_event_callbacks(i2c_rpi_handle, &cbs, nullptr));
 
-    i2c_master_dev_handle_t rpi_handle;
+    ESP_LOGI(LOG_TAG, "Waiting for timecode from Pi...");
+    int timeout_ms = 10000;
+    while (!timecode_received && timeout_ms > 0) {
+        vTaskDelay(pdMS_TO_TICKS(10));
+        timeout_ms -= 10;
+    }
 
-    //Register the device
-    i2c_master_bus_add_device(rpi_bus_handle, &rpi_config, &rpi_handle);
-
+    if (timecode_received) {
+        ESP_LOGI(LOG_TAG, "Timecode reçu du Pi : %s", rpi_timecode);
+        // Tu peux maintenant initialiser ton logger ici sereinement !
+        init_tcp_logger(rpi_timecode);
+    } else {
+        ESP_LOGE(LOG_TAG, "Timeout : Le Pi n'a pas envoyé le timecode.");
+    }
 #endif
 
     //First start
@@ -182,18 +209,7 @@ extern "C" void app_main(void) {
     uint16_t still_frames = 0;
     bool side_task = false;
 
-#if CONFIG_OUCHAT_DEBUG_CAM
-
-    //Start the record and get the datetime code in order to link the logs
-    uint8_t trigger[] = "Start";
-    uint8_t timecode[15] = {0};
-
-    //The timecode format : YYYYmmddHHMMSS
-    i2c_master_transmit_receive(rpi_handle, trigger, sizeof trigger, timecode, 15, -1);
-
-    init_tcp_logger(timecode);
-
-#elif CONFIG_OUCHAT_DEBUG_LOGGER
+#if !CONFIG_OUCHAT_DEBUG_CAM && CONFIG_OUCHAT_DEBUG_LOGGER
 
     init_tcp_logger();
 
@@ -331,9 +347,8 @@ extern "C" void app_main(void) {
 
 #if CONFIG_OUCHAT_DEBUG_CAM
 
-    //Stop the record
-    uint8_t stop[] = "Stop";
-    i2c_master_transmit(rpi_handle, stop, sizeof(stop), -1);
+    //Stop the camera
+    gpio_set_level((gpio_num_t)CONFIG_OUCHAT_DEBUG_CAM_TRIGGER, 0);
 
 #endif
 
