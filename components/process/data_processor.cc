@@ -680,11 +680,11 @@ esp_err_t process_data(coord_t sensor_data[8][8], uint8_t data_status[8][8], cal
         int16_t previous_index = cluster_index(previous_frame.clusters, cluster_id);
         int16_t current_index = cluster_index(current_frame.clusters, cluster_id);
 
-        cluster_t* cluster = &previous_frame.clusters[previous_index];
-
         //End
         if (previous_index != -1 && current_index == -1)
         {
+            cluster_t* cluster = &previous_frame.clusters[previous_index];
+
             cluster->tracker.exit_coord.x = cluster->coord.x;
             cluster->tracker.exit_coord.y = cluster->coord.y;
             cluster->tracker.exit_coord.z = cluster->coord.z;
