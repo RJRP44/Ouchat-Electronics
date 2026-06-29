@@ -6,6 +6,7 @@
 #define OUCHAT_DATA_PREPROCESSING_OUCHAT_UNITS_H
 
 #include <cstdint>
+#include <memory>
 #include <vector>
 #include <vl53l8cx_api.h>
 #include <vl53l8cx_plugin_detection_thresholds.h>
@@ -72,7 +73,7 @@ typedef struct
 {
     int16_t id;
     uint8_t size;
-    tracker_t tracker;
+    std::shared_ptr<tracker_t> tracker = nullptr;
     coord_t coord;
     bounding_box_t box{};
 } cluster_t;

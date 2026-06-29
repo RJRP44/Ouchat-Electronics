@@ -19,17 +19,17 @@ static uint8_t* current_size_map[8][8];
 
 using namespace ouchat;
 
-static void movement_handler(tracker_t tracker, const calibration_config_t& calibration)
+static void movement_handler(tracker_t* tracker, const calibration_config_t& calibration)
 {
     //Prepare all the input data for tha ai
     ai::model_input input{};
 
-    coord_t* start = &tracker.entry_coord;
+    coord_t* start = &tracker->entry_coord;
     input.start_x = static_cast<float>(start->x);
     input.start_y = static_cast<float>(start->y);
     input.start_z = static_cast<float>(start->z);
 
-    coord_t* end = &tracker.exit_coord;
+    coord_t* end = &tracker->exit_coord;
     input.end_x = static_cast<float>(end->x);
     input.end_y = static_cast<float>(end->y);
     input.end_z = static_cast<float>(end->z);
@@ -45,24 +45,24 @@ static void movement_handler(tracker_t tracker, const calibration_config_t& cali
         return;
     }
 
-    input.average_height = static_cast<float>(tracker.average_height);
-    input.average_deviation = static_cast<float>(tracker.average_deviation);
+    input.average_height = static_cast<float>(tracker->average_height);
+    input.average_deviation = static_cast<float>(tracker->average_deviation);
     input.floor_distance = static_cast<float>(calibration.floor_distance);
 
-    coord_t* maximum = &tracker.maximum;
-    coord_t* minimum = &tracker.minimum;
+    coord_t* maximum = &tracker->maximum;
+    coord_t* minimum = &tracker->minimum;
     input.absolute_displacement_x = static_cast<float>(maximum->x - minimum->x);
     input.absolute_displacement_y = static_cast<float>(maximum->y - minimum->y);
 
-    input.average_size = static_cast<float>(tracker.average_size);
+    input.average_size = static_cast<float>(tracker->average_size);
 
-    bounding_box_t* entry = &tracker.entry_box;
+    bounding_box_t* entry = &tracker->entry_box;
     input.entry_box_max_x = static_cast<float>(entry->maximum.x);
     input.entry_box_max_y = static_cast<float>(entry->maximum.y);
     input.entry_box_min_x = static_cast<float>(entry->minimum.x);
     input.entry_box_min_y = static_cast<float>(entry->minimum.y);
 
-    bounding_box_t* exit = &tracker.exit_box;
+    bounding_box_t* exit = &tracker->exit_box;
     input.exit_box_max_x = static_cast<float>(exit->maximum.x);
     input.exit_box_max_y = static_cast<float>(exit->maximum.y);
     input.exit_box_min_x = static_cast<float>(exit->minimum.x);
@@ -71,6 +71,12 @@ static void movement_handler(tracker_t tracker, const calibration_config_t& cali
     ai::result result;
 
     ai::interpreter::predict(input, &result);
+
+    //For debug purpose
+    for (float value : input.to_normalized_array())
+    {
+        ESP_LOGI(PROCESSOR_LOG_TAG, "%f", value);
+    }
 
     TaskHandle_t xHandle = nullptr;
 
@@ -195,7 +201,7 @@ static void frame_init(frame_t* frame, coord_t data[8][8], uint8_t data_status[8
     }
 
     //Set the cluster / background count to 0
-    frame->clusters = std::vector<cluster_t>();
+    frame->clusters = {};
     frame->background_count = 0;
 }
 
@@ -269,7 +275,7 @@ static int16_t cluster_index(const std::vector<cluster_t>& array, int16_t cluste
 {
     //Search in the entire array
     int16_t index = 0;
-    for (auto cluster : array)
+    for (const auto& cluster : array)
     {
         if (cluster.id == cluster_id)
         {
@@ -398,6 +404,7 @@ esp_err_t process_data(coord_t sensor_data[8][8], uint8_t data_status[8][8], cal
 
         //All the clusters are new so the trackers must be initialized
         auto* sums = new coord_t[count];
+        memset(sums, 0, sizeof(coord_t) * count);
         for (X_Y_FOR_LOOP)
         {
             int16_t cluster_id = first_frame.data[x][y].cluster_id;
@@ -421,8 +428,14 @@ esp_err_t process_data(coord_t sensor_data[8][8], uint8_t data_status[8][8], cal
             sums[index].y += coord.y;
             sums[index].z += coord.z;
 
+
+            if (first_frame.clusters[index].tracker == nullptr)
+            {
+                first_frame.clusters[index].tracker = std::make_shared<tracker_t>();
+            }
+
             //Set tracker bounding box
-            bounding_box_t* box = &first_frame.clusters[index].tracker.entry_box;
+            bounding_box_t* box = &first_frame.clusters[index].tracker->entry_box;
 
             //Init if nesscary the bounding boxes
             if (box->maximum.empty() && box->minimum.empty())
@@ -448,7 +461,7 @@ esp_err_t process_data(coord_t sensor_data[8][8], uint8_t data_status[8][8], cal
             start_coord[i].y = sums[i].y / first_frame.clusters[i].size;
             start_coord[i].z = sums[i].z / first_frame.clusters[i].size;
 
-            tracker_t* tracker = &first_frame.clusters[i].tracker;
+            tracker_t* tracker = first_frame.clusters[i].tracker.get();
 
             tracker->age = 0;
             tracker->entry_coord = start_coord[i];
@@ -494,7 +507,7 @@ esp_err_t process_data(coord_t sensor_data[8][8], uint8_t data_status[8][8], cal
         //Calculate the standard deviation
         for (int i = 0; i < count; ++i)
         {
-            first_frame.clusters[i].tracker.average_deviation = sqrt(variances[i] / first_frame.clusters[i].size);
+            first_frame.clusters[i].tracker->average_deviation = sqrt(variances[i] / first_frame.clusters[i].size);
         }
 
         print_frame(first_frame);
@@ -665,7 +678,7 @@ esp_err_t process_data(coord_t sensor_data[8][8], uint8_t data_status[8][8], cal
     //List all the clusters of the two frames
     for (int i = 0; i < 2; ++i)
     {
-        for (auto cluster : (i == 0) ? previous_frame.clusters : current_frame.clusters)
+        for (const auto& cluster : (i == 0) ? previous_frame.clusters : current_frame.clusters)
         {
             //Check if this cluster is already in the list
             if (std::ranges::find(cluster_ids.begin(), cluster_ids.end(), cluster.id) == cluster_ids.end())
@@ -685,13 +698,13 @@ esp_err_t process_data(coord_t sensor_data[8][8], uint8_t data_status[8][8], cal
         {
             cluster_t* cluster = &previous_frame.clusters[previous_index];
 
-            cluster->tracker.exit_coord.x = cluster->coord.x;
-            cluster->tracker.exit_coord.y = cluster->coord.y;
-            cluster->tracker.exit_coord.z = cluster->coord.z;
+            cluster->tracker->exit_coord.x = cluster->coord.x;
+            cluster->tracker->exit_coord.y = cluster->coord.y;
+            cluster->tracker->exit_coord.z = cluster->coord.z;
 
-            cluster->tracker.exit_box = cluster->box;
+            cluster->tracker->exit_box = cluster->box;
 
-            movement_handler(cluster->tracker, calibration);
+            movement_handler(cluster->tracker.get(), calibration);
         }
     }
 
@@ -789,12 +802,18 @@ esp_err_t process_data(coord_t sensor_data[8][8], uint8_t data_status[8][8], cal
         bool is_new = cluster_index(previous_frame.clusters, cluster.id) == -1;
         int16_t index = cluster_index(current_frame.clusters, cluster.id);
 
-        tracker_t* tracker = &cluster.tracker;
         double average_deviation = sqrt(variances[index] / cluster.size);
 
         //On new clusters tracking must be initialized
         if (is_new)
         {
+            if (cluster.tracker == nullptr)
+            {
+                cluster.tracker = std::make_shared<tracker_t>();
+            }
+
+            tracker_t* tracker = cluster.tracker.get();
+
             tracker->age = 0;
             tracker->entry_coord = cluster.coord;
             tracker->maximum = cluster.coord;
@@ -802,6 +821,8 @@ esp_err_t process_data(coord_t sensor_data[8][8], uint8_t data_status[8][8], cal
 
             tracker->entry_box = cluster.box;
         }
+
+        tracker_t* tracker = cluster.tracker.get();
 
         tracker->average_height = (cluster.coord.z + tracker->average_height * tracker->age) / (tracker->age + 1);
         tracker->average_deviation = (average_deviation + tracker->average_deviation * tracker->age) / (tracker->age + 1);
@@ -817,6 +838,7 @@ esp_err_t process_data(coord_t sensor_data[8][8], uint8_t data_status[8][8], cal
         tracker->minimum.y = MIN(tracker->minimum.y, cluster.coord.y);;
         tracker->minimum.z = MIN(tracker->minimum.z, cluster.coord.z);;
     }
+
 
     delete[] variances;
 
