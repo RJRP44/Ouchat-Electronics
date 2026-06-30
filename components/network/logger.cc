@@ -30,13 +30,12 @@ static void queue_packet(cJSON *packet)
 {
     char *json = cJSON_PrintUnformatted(packet);
     if (json == nullptr) {
-
-        ESP_LOGE(LOG_TAG, "Failed to format json...");
+        printf("TCP LOGGER ERROR : Failed to format json...\n");
         return;
     }
 
     if (xQueueSend(log_queue, &json, 0) != pdTRUE) {
-        ESP_LOGW(LOG_TAG, "Log queue full, dropping packet");
+        printf("TCP LOGGER ERROR : Log queue full, dropping packet\n");
         free(json);
     }
 }
@@ -68,34 +67,16 @@ int logging_vprintf( const char *fmt, va_list l )
     return vprintf( fmt, l );
 }
 
-#if CONFIG_OUCHAT_DEBUG_CAM
 
 static char rpi_timecode[20];
 
-uint8_t init_tcp_logger(uint8_t *timecode) {
-    log_queue = xQueueCreate(OUCHAT_LOG_QUEUE_SIZE, sizeof(char*));
-
-    if (log_queue == nullptr)
-    {
-        ESP_LOGE(LOG_TAG, "Queue not created");
-    }
-    deep_sleep_queue = xQueueCreate(1, 1);
-    logger_event_group = xEventGroupCreate();
-
+uint8_t tcp_logger_set_timecode(const uint8_t *timecode) {
     memset(rpi_timecode, 0, sizeof(rpi_timecode));
-
     memcpy(rpi_timecode, timecode, 19);
-
     rpi_timecode[19] = '\0';
-    printf("timecoooode : %s\n", rpi_timecode);
-
-
-    esp_log_set_vprintf(logging_vprintf);
-    ESP_LOGI(LOG_TAG, "Starting logger");
     return 0;
 }
 
-#else
 uint8_t init_tcp_logger() {
     log_queue = xQueueCreate(OUCHAT_LOG_QUEUE_SIZE, sizeof(char*));
 
@@ -109,9 +90,8 @@ uint8_t init_tcp_logger() {
     ESP_LOGI(LOG_TAG, "Starting logger");
     return 0;
 }
-#endif
 
-uint8_t tcp_log(std::string data) {
+uint8_t tcp_log(uint32_t timestamp, const std::string& data) {
 
     //Create a json with the raw sensor data
     cJSON *packet = cJSON_CreateObject();
@@ -119,7 +99,7 @@ uint8_t tcp_log(std::string data) {
 
     cJSON *content = cJSON_CreateObject();
     cJSON_AddStringToObject(content, "data", data.c_str());
-    cJSON_AddNumberToObject(content, "time_ms", esp_log_timestamp());
+    cJSON_AddNumberToObject(content, "time_ms", timestamp);
 
     cJSON_AddItemToObject(packet, "content", content);
 
@@ -152,14 +132,13 @@ void tcp_logger_task(void *args) {
     //If not connected to the Wi-Fi cancel
     if (!status) {
         ESP_LOGE(LOG_TAG, "Not connected to Wi-Fi, cancelling...");
-        return;
+        vTaskDelete(nullptr);
     }
 
     int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
     if (sock < 0) {
         ESP_LOGE(LOG_TAG, "Failed to allocate socket...");
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-        return;
+        vTaskDelete(nullptr);
     }
 
     if (connect(sock, reinterpret_cast<sockaddr *>(&serv_addr), sizeof(serv_addr)) != 0) {
@@ -167,8 +146,7 @@ void tcp_logger_task(void *args) {
 
         //Stop the socket
         close(sock);
-        vTaskDelay(4000 / portTICK_PERIOD_MS);
-        return;
+        vTaskDelete(nullptr);
     }
 
     //The context information in json
@@ -216,7 +194,6 @@ void tcp_logger_task(void *args) {
 
             xEventGroupSetBits(logger_event_group, OUCHAT_LOG_EVENT_STOPPED);
             vTaskDelete(nullptr);
-            return;
         }
         if (queue_length >= 1) {
             char *buffer = nullptr;
@@ -237,7 +214,7 @@ void tcp_logger_task(void *args) {
                 //Stop the socket
                 close(sock);
                 vTaskDelay(4000 / portTICK_PERIOD_MS);
-                continue;
+                vTaskDelete(nullptr);
             }
 
             free(buffer);

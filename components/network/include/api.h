@@ -10,6 +10,9 @@
 #define REQUEST_FLAG BIT1
 #define REQUEST_DONE_FLAG BIT2
 
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
+
 extern EventGroupHandle_t api_flags;
 
 esp_err_t init_api();

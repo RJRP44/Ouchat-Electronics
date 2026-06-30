@@ -8,7 +8,6 @@
 #include <sensor.h>
 #include <calibrator.h>
 #include <api.h>
-#include <leds.h>
 #include <utils.h>
 #include <ai.h>
 
@@ -19,7 +18,7 @@ static uint8_t* current_size_map[8][8];
 
 using namespace ouchat;
 
-static void movement_handler(tracker_t* tracker, const calibration_config_t& calibration)
+static void movement_handler(int16_t id, tracker_t* tracker, const calibration_config_t& calibration)
 {
     //Prepare all the input data for tha ai
     ai::model_input input{};
@@ -68,43 +67,16 @@ static void movement_handler(tracker_t* tracker, const calibration_config_t& cal
     input.exit_box_min_x = static_cast<float>(exit->minimum.x);
     input.exit_box_min_y = static_cast<float>(exit->minimum.y);
 
-    ai::result result;
+#if CONFIG_OUCHAT_DEBUG_LOGGER
+    //For debug
+    input.id = id;
 
-    ai::interpreter::predict(input, &result);
+    //Log for debug
+    ESP_LOGI(PROCESSOR_LOG_TAG, "Oucha²i call for cluster %d@%d", id, tracker->timestamp);
+#endif
 
-    //For debug purpose
-    for (float value : input.to_normalized_array())
-    {
-        ESP_LOGI(PROCESSOR_LOG_TAG, "%f", value);
-    }
-
-    TaskHandle_t xHandle = nullptr;
-
-    if (result == ai::INSIDE)
-    {
-        ESP_LOGI(PROCESSOR_LOG_TAG, "Inside !");
-
-        //Set the LED color
-        set_color({.red = 0, .green = 50, .blue = 0});
-
-        int16_t value = 1;
-
-        xTaskCreatePinnedToCore(api_set, "ouchat_api", 4096, &value, 4, &xHandle, 1);
-        configASSERT(xHandle);
-    }
-
-    if (result == ai::OUTSIDE)
-    {
-        ESP_LOGI(PROCESSOR_LOG_TAG, "Outside !");
-
-        //Set the LED color
-        set_color({.red = 50, .green = 0, .blue = 0});
-
-        int16_t value = 0;
-
-        xTaskCreatePinnedToCore(api_set, "ouchat_api", 4096, &value, 4, &xHandle, 1);
-        configASSERT(xHandle);
-    }
+    //Process the AI on the other thread
+    ai::interpreter::submit(input, 500 / portTICK_PERIOD_MS);
 }
 
 static bool is_in_the_grid(int x, int y)
@@ -397,7 +369,7 @@ esp_err_t process_data(coord_t sensor_data[8][8], uint8_t data_status[8][8], cal
             propagate_to_neighbours(&first_frame, (p_coord_t){x, y}, &cluster);
 
             //Add the cluster
-            first_frame.clusters.insert(first_frame.clusters.end(), cluster);
+            first_frame.clusters.push_back(cluster);
 
             count++;
         }
@@ -434,6 +406,10 @@ esp_err_t process_data(coord_t sensor_data[8][8], uint8_t data_status[8][8], cal
                 first_frame.clusters[index].tracker = std::make_shared<tracker_t>();
             }
 
+#if CONFIG_OUCHAT_DEBUG_LOGGER
+            first_frame.clusters[index].tracker->timestamp = esp_log_timestamp();
+#endif
+
             //Set tracker bounding box
             bounding_box_t* box = &first_frame.clusters[index].tracker->entry_box;
 
@@ -455,6 +431,7 @@ esp_err_t process_data(coord_t sensor_data[8][8], uint8_t data_status[8][8], cal
 
         //Get the average for each cluster and add it to it tracker
         auto* start_coord = new coord_t[count];
+        memset(start_coord, 0, count * sizeof(double));
         for (int i = 0; i < count; ++i)
         {
             start_coord[i].x = sums[i].x / first_frame.clusters[i].size;
@@ -509,8 +486,9 @@ esp_err_t process_data(coord_t sensor_data[8][8], uint8_t data_status[8][8], cal
         {
             first_frame.clusters[i].tracker->average_deviation = sqrt(variances[i] / first_frame.clusters[i].size);
         }
-
+#if OUCHAT_DEBUG_CLUSTERS_LOG
         print_frame(first_frame);
+#endif
         previous_frame = first_frame;
 
         delete[] sums;
@@ -613,7 +591,7 @@ esp_err_t process_data(coord_t sensor_data[8][8], uint8_t data_status[8][8], cal
         }
 
         //Add the cluster
-        current_frame.clusters.insert(current_frame.clusters.end(), cluster);
+        current_frame.clusters.push_back(cluster);
     }
 
     delete[] coords;
@@ -666,11 +644,13 @@ esp_err_t process_data(coord_t sensor_data[8][8], uint8_t data_status[8][8], cal
         }
 
         //Add the cluster
-        current_frame.clusters.insert(current_frame.clusters.end(), cluster);
+        current_frame.clusters.push_back(cluster);
     }
 
     //Print the frame
+#if OUCHAT_DEBUG_CLUSTERS_LOG
     print_frame(current_frame);
+#endif
 
     //Find new and dead clusters
     std::vector<int16_t> cluster_ids;
@@ -683,7 +663,7 @@ esp_err_t process_data(coord_t sensor_data[8][8], uint8_t data_status[8][8], cal
             //Check if this cluster is already in the list
             if (std::ranges::find(cluster_ids.begin(), cluster_ids.end(), cluster.id) == cluster_ids.end())
             {
-                cluster_ids.insert(cluster_ids.end(), cluster.id);
+                cluster_ids.push_back(cluster.id);
             }
         }
     }
@@ -704,7 +684,7 @@ esp_err_t process_data(coord_t sensor_data[8][8], uint8_t data_status[8][8], cal
 
             cluster->tracker->exit_box = cluster->box;
 
-            movement_handler(cluster->tracker.get(), calibration);
+            movement_handler(cluster->id, cluster->tracker.get(), calibration);
         }
     }
 
@@ -812,6 +792,10 @@ esp_err_t process_data(coord_t sensor_data[8][8], uint8_t data_status[8][8], cal
                 cluster.tracker = std::make_shared<tracker_t>();
             }
 
+#if CONFIG_OUCHAT_DEBUG_LOGGER
+            cluster.tracker->timestamp = esp_log_timestamp();
+#endif
+
             tracker_t* tracker = cluster.tracker.get();
 
             tracker->age = 0;
@@ -844,7 +828,9 @@ esp_err_t process_data(coord_t sensor_data[8][8], uint8_t data_status[8][8], cal
 
     previous_frame = current_frame;
 
+#if OUCHAT_DEBUG_CLUSTERS_LOG
     print_frame(current_frame);
+#endif
 
     return current_frame.clusters.empty();
 }

@@ -44,6 +44,23 @@ void side_tasks(void *arg){
     init_api();
     init_leds();
 
+#if CONFIG_OUCHAT_DEBUG_CAM
+
+    int timeout_ms = 10000;
+    while (!timecode_received && timeout_ms > 0) {
+        vTaskDelay(pdMS_TO_TICKS(10));
+        timeout_ms -= 10;
+    }
+
+    if (timecode_received) {
+        ESP_LOGI(LOG_TAG, "Received timecode from camera : %s", rpi_timecode);
+
+        tcp_logger_set_timecode(rpi_timecode);
+    } else {
+        ESP_LOGE(LOG_TAG, "Timeout : no timecode recived");
+    }
+#endif
+
 #if CONFIG_OUCHAT_DEBUG_LOGGER
     TaskHandle_t xHandle = nullptr;
 
@@ -67,32 +84,26 @@ extern "C" void app_main(void) {
 #if CONFIG_OUCHAT_DEBUG_LOGGER
     //Remove info logs from Wi-Fi, it messes with the log ingester
     esp_log_level_set("wifi", ESP_LOG_WARN);
+    init_tcp_logger();
 #endif
 
     //Get the wakeup reason
     uint32_t wakeup_reason = esp_sleep_get_wakeup_causes();
 
-    //Apply the configuration to the i²c bus
-    i2c_master_bus_handle_t bus_handle;
-    i2c_master_bus_config_t i2c_config = DEFAULT_I2C_BUS_CONFIG;
-    i2c_new_master_bus(&i2c_config, &bus_handle);
-
-    //Register the device
-    i2c_device_config_t dev_config = DEFAULT_I2C_SENSOR_CONFIG;
-    i2c_master_bus_add_device(bus_handle, &dev_config, &sensor.handle.platform.handle);
-
 #if CONFIG_OUCHAT_DEBUG_CAM
-
-    gpio_set_direction((gpio_num_t)CONFIG_OUCHAT_DEBUG_CAM_TRIGGER, GPIO_MODE_OUTPUT);
-    gpio_set_level((gpio_num_t)CONFIG_OUCHAT_DEBUG_CAM_TRIGGER, 1);
-    ESP_LOGI(LOG_TAG, "Camera started");
+    if (wakeup_reason & BIT(ESP_SLEEP_WAKEUP_EXT0))
+    {
+        gpio_set_direction(static_cast<gpio_num_t>(CONFIG_OUCHAT_DEBUG_CAM_TRIGGER), GPIO_MODE_OUTPUT);
+        gpio_set_level(static_cast<gpio_num_t>(CONFIG_OUCHAT_DEBUG_CAM_TRIGGER), 1);
+        ESP_LOGI(LOG_TAG, "Camera started");
+    }
 
     i2c_slave_dev_handle_t i2c_rpi_handle;
 
     i2c_slave_config_t i2c_rpi_config = {
         .i2c_port = I2C_NUM_0,
-        .sda_io_num = (gpio_num_t)CONFIG_OUCHAT_DEBUG_CAM_SDA,
-        .scl_io_num = (gpio_num_t)CONFIG_OUCHAT_DEBUG_CAM_SCL,
+        .sda_io_num = static_cast<gpio_num_t>(CONFIG_OUCHAT_DEBUG_CAM_SDA),
+        .scl_io_num = static_cast<gpio_num_t>(CONFIG_OUCHAT_DEBUG_CAM_SCL),
         .clk_source = I2C_CLK_SRC_DEFAULT,
         .send_buf_depth = 256,
         .receive_buf_depth = 256,
@@ -109,19 +120,19 @@ extern "C" void app_main(void) {
     ESP_ERROR_CHECK(i2c_slave_register_event_callbacks(i2c_rpi_handle, &cbs, nullptr));
 
     ESP_LOGI(LOG_TAG, "Waiting for timecode from Pi...");
-    int timeout_ms = 10000;
-    while (!timecode_received && timeout_ms > 0) {
-        vTaskDelay(pdMS_TO_TICKS(10));
-        timeout_ms -= 10;
-    }
+#endif
 
-    if (timecode_received) {
-        ESP_LOGI(LOG_TAG, "Timecode reçu du Pi : %s", rpi_timecode);
-        // Tu peux maintenant initialiser ton logger ici sereinement !
-        init_tcp_logger(rpi_timecode);
-    } else {
-        ESP_LOGE(LOG_TAG, "Timeout : Le Pi n'a pas envoyé le timecode.");
-    }
+    //Apply the configuration to the i²c bus
+    i2c_master_bus_handle_t bus_handle;
+    i2c_master_bus_config_t i2c_config = DEFAULT_I2C_BUS_CONFIG;
+    i2c_new_master_bus(&i2c_config, &bus_handle);
+
+    //Register the device
+    i2c_device_config_t dev_config = DEFAULT_I2C_SENSOR_CONFIG;
+    i2c_master_bus_add_device(bus_handle, &dev_config, &sensor.handle.platform.handle);
+
+#if OUCHAT_DEBUG_CLUSTERS_LOG
+    ESP_LOGW(LOG_TAG, "Printing debug log frames, not intended for production");
 #endif
 
     //First start
@@ -228,6 +239,9 @@ extern "C" void app_main(void) {
 
             //Convert 1D data to grid
             vl53l8cx_get_ranging_data(&sensor.handle, &results);
+#if CONFIG_OUCHAT_DEBUG_LOGGER
+            uint32_t timestamp = esp_log_timestamp();
+#endif
             memcpy(raw_data, results.distance_mm, sizeof(raw_data));
             memcpy(data_status, results.target_status, sizeof(data_status));
 
@@ -244,7 +258,7 @@ extern "C" void app_main(void) {
             log.resize(OUCHAT_RAW_DATA_SIZE);
 
             mbedtls_base64_encode(reinterpret_cast<unsigned char*>(log.data()), log.size(), &length, reinterpret_cast<const unsigned char*>(&results),sizeof (results));
-            tcp_log(log);
+            tcp_log(timestamp,log);
 
 #endif
 
@@ -268,6 +282,7 @@ extern "C" void app_main(void) {
 
             side_task = true;
         }
+        vTaskDelay(2 / portTICK_PERIOD_MS);
     }
 
     //Calibration before sleep
@@ -346,10 +361,11 @@ extern "C" void app_main(void) {
     ESP_LOGI(LOG_TAG, "Entering deep sleep");
 
 #if CONFIG_OUCHAT_DEBUG_CAM
-
     //Stop the camera
-    gpio_set_level((gpio_num_t)CONFIG_OUCHAT_DEBUG_CAM_TRIGGER, 0);
-
+    if (wakeup_reason & BIT(ESP_SLEEP_WAKEUP_EXT0))
+    {
+        gpio_set_level(static_cast<gpio_num_t>(CONFIG_OUCHAT_DEBUG_CAM_TRIGGER), 0);
+    }
 #endif
 
 #if CONFIG_OUCHAT_DEBUG_LOGGER
@@ -358,6 +374,8 @@ extern "C" void app_main(void) {
     stop_tcp_logger();
 
 #endif
+
+    ESP_LOGI(LOG_TAG, "Sleeping...");
 
     //Start the deep sleep
     esp_deep_sleep_start();

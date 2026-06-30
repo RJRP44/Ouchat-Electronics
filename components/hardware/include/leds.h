@@ -6,6 +6,7 @@
 #define OUCHAT_ELECTRONICS_LEDS_H
 
 #include <led_strip.h>
+#include "types.h"
 
 extern led_strip_handle_t led_strip;
 

@@ -56,6 +56,9 @@ typedef struct
 
 typedef struct
 {
+#if CONFIG_OUCHAT_DEBUG_LOGGER
+    uint32_t timestamp;
+#endif
     uint16_t age;
     coord_t entry_coord;
     coord_t exit_coord;

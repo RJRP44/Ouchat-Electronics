@@ -5,14 +5,18 @@
 #ifndef AI_H
 #define AI_H
 
-#include <tensorflow/lite/micro/micro_mutable_op_resolver.h>
-#include <tensorflow/lite/micro/micro_interpreter.h>
-#include <tensorflow/lite/schema/schema_generated.h>
 #include <vector>
 #include <esp_err.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
+#include "portmacro.h"
 #include "utils.h"
+#include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
 
 #define TENSOR_ARENA_SIZE (2 * 1024)
+
+#define AI_LOG_TAG "oucha2i_interpreter"
+#define AI_QUEUE_DEPTH 10
 
 using namespace ouchat;
 
@@ -41,7 +45,9 @@ namespace ouchat::ai {
         float exit_box_max_y;
         float exit_box_min_x;
         float exit_box_min_y;
-
+#if CONFIG_OUCHAT_DEBUG_LOGGER
+        int16_t id;
+#endif
         [[nodiscard]] std::vector<float> to_normalized_array() const {
             std::vector<float> input;
             input.resize(23);
@@ -77,14 +83,13 @@ namespace ouchat::ai {
     };
 
     class interpreter {
-
-    private:
-        static uint8_t tensor_arena[TENSOR_ARENA_SIZE];
-        static tflite::MicroInterpreter *micro_interpreter;
-
-    public :
+    public:
         static esp_err_t init(const void *ai_model);
-        static esp_err_t predict(model_input input, result *output);
+        static esp_err_t predict(model_input input, result& output);
+        static esp_err_t submit(const model_input& input, TickType_t wait_ticks);
+    private:
+        static void task_loop(void* arg);
+        static result classify(const TfLitePtrUnion& data);
     };
 } // ouchat::ai
 
